@@ -46,6 +46,9 @@
     <ClCompile Include="uuid.cpp">
       <Filter>Archivos de origen\Support</Filter>
     </ClCompile>
+    <ClCompile Include="game_objects.cpp">
+      <Filter>Archivos de origen\Engine</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="json.h">
@@ -64,6 +67,9 @@
       <Filter>Archivos de encabezado\Engine</Filter>
     </ClInclude>
     <ClInclude Include="uuid.h">
+      <Filter>Archivos de encabezado\Support</Filter>
+    </ClInclude>
+    <ClInclude Include="mem.h">
       <Filter>Archivos de encabezado\Support</Filter>
     </ClInclude>
   </ItemGroup>

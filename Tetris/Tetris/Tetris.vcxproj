@@ -147,6 +147,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="game_loop.cpp" />
+    <ClCompile Include="game_objects.cpp" />
     <ClCompile Include="json.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="resources.cpp" />
@@ -156,6 +157,7 @@
     <ClInclude Include="game_loop.h" />
     <ClInclude Include="game_objects.h" />
     <ClInclude Include="json.h" />
+    <ClInclude Include="mem.h" />
     <ClInclude Include="resources.h" />
     <ClInclude Include="types.h" />
     <ClInclude Include="uuid.h" />

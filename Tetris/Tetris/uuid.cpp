@@ -1,17 +1,11 @@
 #include "uuid.h"
 
 #include <chrono>
-#include <random>
 
 using namespace std::chrono;
 
 typedef union
 {
-	struct
-	{
-		uint32_t time;
-		uint32_t rand;
-	};
 	char bytes[8];
 	uint64_t value;
 } code_t;
@@ -42,14 +36,11 @@ bool UUID::operator! () const { return !_code; }
 UUID UUID::generate()
 {
 	static uint64_t last = system_clock::now().time_since_epoch().count();
-
-	uint64_t tt = system_clock::now().time_since_epoch().count();
-	std::mt19937 gen{ static_cast<uint32_t>((tt * 0x5DEECE66DL + 0xBL) & ((1L << 48) - 1)) };
-	last = tt;
+	if (!(last + 1))
+		++last;
 
 	code_t code;
-	code.time = (tt >> 10U) & 0xffffffffU;
-	code.rand = gen();
+	code.value = ++last;
 	return { code.value };
 }
 
@@ -73,4 +64,4 @@ std::string to_string(const UUID& uuid)
 }
 
 std::istream& operator>> (std::istream& is, UUID& uuid) { return is >> uuid._code; }
-std::ostream& operator<< (std::ostream& os, const UUID& uuid) { return os << uuid._code; }
+std::ostream& operator<< (std::ostream& os, const UUID& uuid) { return os << to_string(uuid._code); }

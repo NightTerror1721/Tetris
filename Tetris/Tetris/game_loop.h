@@ -2,11 +2,12 @@
 
 #include <SFML/Graphics.hpp>
 
+#include "game_objects.h"
 #include "types.h"
 
 namespace WindowStyle = sf::Style;
 
-class GameController
+class GameController : public GameObjectRepository<>
 {
 private:
 	bool _close;
