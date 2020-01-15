@@ -44,10 +44,14 @@ public:
 	using ObjPtr = Obj*;
 	using Reader = ReadOnlyPointer<Obj>;
 	using ConstReader = ConstReadOnlyPointer<Obj>;
-	using Entry = std::pair<UUID, ObjPtr>;
+	using AllocatorList = SimpleLinkedList<ObjPtr>;
+	using Allocator = typename AllocatorList::NodePointer;
+	using Entry = std::pair<const UUID, Allocator>;
+
 
 protected:
-	std::map<UUID, ObjPtr> _objs;
+	std::map<UUID, Allocator> _objs;
+	AllocatorList _list;
 
 public:
 	GameObjectRepository() :
@@ -60,7 +64,8 @@ public:
 		auto uuid = obj->getUUID();
 		if (!getGameObject(uuid))
 		{
-			_objs[uuid] = { obj };
+			_list.append(obj);
+			_objs[uuid] = _list.lastNode();
 			return true;
 		}
 		return false;
@@ -78,13 +83,13 @@ public:
 
 	Reader getGameObject(const UUID& uuid)
 	{
-		auto& it = _objs.find(uuid);
-		return it == _objs.end() ? nullptr : Reader{ *it };
+		const auto& it = _objs.find(uuid);
+		return it == _objs.end() ? nullptr : Reader{ *it->second };
 	}
 	ConstReader getGameObject(const UUID& uuid) const
 	{
-		auto& it = _objs.find(uuid);
-		return it == _objs.end() ? nullptr : ConstReader{ *it };
+		const auto& it = _objs.find(uuid);
+		return it == _objs.end() ? nullptr : ConstReader{ *it->second };
 	}
 
 	inline bool hasGameObject(const UUID& uuid) { return getGameObject(uuid); }
@@ -93,25 +98,25 @@ public:
 
 	Reader findGameObject(std::function<bool(Reader)>& predicate)
 	{
-		Entry* e = _find([&predicate](Entry& e2) -> bool { return predicate(Reader{ e2.second }); });
-		return e ? Reader{ e->second } : nullptr;
+		Entry* e = _find([&predicate](Entry& e2) -> bool { return predicate(Reader{ *e2.second }); });
+		return e ? Reader{ *e->second } : nullptr;
 	}
 	ConstReader findGameObject(std::function<bool(ConstReader)>& predicate) const
 	{
-		Entry* e = _find([&predicate](const Entry& e2) -> bool { return predicate(ConstReader{ e2.second }); });
-		return e ? Reader{ e->second } : nullptr;
+		const Entry* e = _find([&predicate](const Entry& e2) -> bool { return predicate(ConstReader{ *e2.second }); });
+		return e ? Reader{ *e->second } : nullptr;
 	}
 
 	void forEachGameObject(std::function<void(Reader)>& action)
 	{
 		for (Entry& e : _objs)
-			action(Reader{ e.second });
+			action(Reader{ *e.second });
 	}
 
 	void forEachGameObject(std::function<void(ConstReader)>& action) const
 	{
 		for (const Entry& e : _objs)
-			action(ConstReader{ e.second });
+			action(ConstReader{ *e.second });
 	}
 
 	bool hasAnyGameObject() const { return !_objs.empty(); }
@@ -120,8 +125,16 @@ public:
 
 	ObjPtr removeGameObject(const UUID& uuid)
 	{
-		auto& it = _objs.erase(uuid);
-		return it != _objs.end() ? it->second : nullptr;
+		const auto& it = _objs.find(uuid);
+		if (it != _objs.end())
+		{
+			auto alloc = it->second;
+			auto ptr = *alloc;
+			_objs.erase(it);
+			_list.eraseNode(alloc);
+			return ptr;
+		}
+		return nullptr;
 	}
 	inline ObjPtr removeGameObject(ConstReader obj) { return removeGameObject(obj->getUUID()); }
 
@@ -137,18 +150,18 @@ public:
 
 
 protected:
-	Entry* _find(std::function<bool(Entry&)>& predicate)
+	Entry* _find(std::function<bool(Entry&)> predicate)
 	{
-		auto& it = std::find_if(_objs.begin(), _objs.end(), predicate);
+		const auto& it = std::find_if(_objs.begin(), _objs.end(), predicate);
 		return it == _objs.end() ? nullptr : &(*it);
 	}
-	const Entry* _find(std::function<bool(const Entry&)>& predicate) const
+	const Entry* _find(std::function<bool(const Entry&)> predicate) const
 	{
-		auto& it = std::find_if(_objs.cbegin(), _objs.cend(), predicate);
+		const auto& it = std::find_if(_objs.cbegin(), _objs.cend(), predicate);
 		return it == _objs.cend() ? nullptr : &(*it);
 	}
 
-	std::vector<Entry*> _findRange(std::vector<bool(Entry&)>& predicate)
+	std::vector<Entry*> _findRange(std::function<bool(Entry&)>& predicate)
 	{
 		std::vector<Entry*> vec{ _objs.size() / 4 };
 		for (Entry& e : _objs)
@@ -156,7 +169,7 @@ protected:
 				vec.push_back(&e);
 		return std::move(vec);
 	}
-	std::vector<const Entry*> _findRange(std::vector<bool(const Entry&)>& predicate) const
+	std::vector<const Entry*> _findRange(std::function<bool(const Entry&)>& predicate) const
 	{
 		std::vector<const Entry*> vec{ _objs.size() / 4 };
 		for (const Entry& e : _objs)

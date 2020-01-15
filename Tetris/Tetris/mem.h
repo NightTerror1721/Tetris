@@ -131,7 +131,7 @@ public:
 
 
 /* SimpleLinkedList */
-template<class _Ty>
+template<typename _Ty>
 class SimpleLinkedList
 {
 private:
@@ -291,13 +291,15 @@ public:
 		_check_index(index, true);
 		return NodePointer{ this, _find_node(index) };
 	}
-	inline NodePointer getNode() { return getNode(_size - 1); }
+	inline NodePointer firstNode() { return NodePointer{ this, _head }; }
+	inline NodePointer lastNode() { return NodePointer{ this, _tail }; }
 	const NodePointer getNode(const size_t index) const
 	{
 		_check_index(index, true);
 		return NodePointer{ this, _find_node(index) };
 	}
-	inline const NodePointer getNode() const { return getNode(_size - 1); }
+	inline const NodePointer firstNode() const { return NodePointer{ this, _head }; }
+	inline const NodePointer lastNode() const { return NodePointer{ this, _tail }; }
 
 	inline const _Ty& get(const size_t index) const { return *getNode(index); }
 	inline const _Ty& first() const { return _head->data; }
@@ -452,7 +454,7 @@ private:
 /* Iterator part */
 public:
 
-	template<class _Ty, class _RetTy>
+	template<typename _Ty, typename _RetTy>
 	class basic_iterator
 	{
 	private:
