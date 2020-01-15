@@ -46,7 +46,7 @@ public:
 	using ConstReader = ConstReadOnlyPointer<Obj>;
 	using Entry = std::pair<UUID, ObjPtr>;
 
-private:
+protected:
 	std::map<UUID, ObjPtr> _objs;
 
 public:

@@ -21,6 +21,17 @@ int main(int argc, char** argv)
 
 	std::cout << to_string(*cp) << std::endl;
 
+	SimpleLinkedList<int> list;
+	list.append(50);
+	list.append(-7);
+	list.append(64);
+	list.erase(50);
+
+	//std::cout << list << std::endl;
+	for (int i : list)
+		std::cout << i << " ";
+	std::cout << std::endl;
+
 	/*UUID uuid = UUID::generate();
 	std::cout << to_string(uuid) << std::endl;*/
 

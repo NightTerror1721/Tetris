@@ -95,6 +95,7 @@ void GameController::update()
 		_fpsManager.update(_elapsedTime);
 
 		/* Update GameObjects */
+
 	}
 }
 void GameController::render()
