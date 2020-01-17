@@ -52,12 +52,21 @@ public:
 protected:
 	std::map<UUID, Allocator> _objs;
 	AllocatorList _list;
+	bool _deleteOnDestroy;
+	
 
 public:
-	GameObjectRepository() :
-		_objs{}
+	explicit GameObjectRepository(bool deleteGameObjectsInDestructor) :
+		_objs{},
+		_list{},
+		_deleteOnDestroy{ deleteGameObjectsInDestructor }
 	{}
-	virtual ~GameObjectRepository() {}
+	virtual ~GameObjectRepository()
+	{
+		if (_deleteOnDestroy)
+			this->deleteAllGameObjects();
+		else this->removeAllGameObjects();
+	}
 
 	bool addGameObject(ObjPtr obj)
 	{
@@ -71,10 +80,11 @@ public:
 		return false;
 	}
 
-	template<class... _Args>
+	template<class _ObjType, class... _Args>
 	Reader createGameObject(_Args&&... args)
 	{
-		ObjPtr obj = new Obj(args...);
+		static_assert(std::is_base_of<Obj, _ObjType>::value);
+		ObjPtr obj = static_cast<ObjPtr>(new _ObjType(args...));
 		if (addGameObject(obj))
 			return { obj };
 		delete obj;
@@ -145,6 +155,20 @@ public:
 			delete p;
 	}
 	inline bool deleteGameObject(ConstReader obj) { return deleteGameObject(obj->getUUID()); }
+
+	std::vector<ObjPtr> removeAllGameObjects()
+	{
+		std::vector<ObjPtr> v{ _list.size() };
+		_objs.clear();
+		_list.clear([&v](ObjPtr& obj) { v.push_back(copy(obj)); });
+		return std::move(v);
+	}
+
+	void deleteAllGameObjects()
+	{
+		_objs.clear();
+		_list.clear([](ObjPtr& obj) { delete obj; });
+	}
 
 
 

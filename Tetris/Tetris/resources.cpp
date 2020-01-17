@@ -6,6 +6,8 @@
 
 const Resource::Folder Resource::ROOT{ "data" };
 const Resource::Folder Resource::FONT{ Resource::ROOT, "font" };
+const Resource::Folder Resource::TEXTURES{ Resource::ROOT, "textures" };
+const Resource::Folder Resource::THEMES{ Resource::TEXTURES, "themes" };
 
 
 Resource::Folder::Folder(const std::string& spath) :

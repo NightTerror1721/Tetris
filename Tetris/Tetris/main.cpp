@@ -1,20 +1,23 @@
 #include "game_loop.h"
 #include "uuid.h"
 #include "mem.h"
+#include "frames.h"
 
 #include <iostream>
 
 int main(int argc, char** argv)
 {
-	/*GameController gc{ "Tetris" };
+	GameController gc{ "Tetris" };
 	gc.showFps(true);
 
-	gc.start();*/
+	gc.createGameObject<Frame>("Test Frame");
+
+	gc.start();
 
 	/*for(int i = 0; i < 9999; ++i)
 		std::cout << to_string(UUID::generate()) << std::endl;*/
 
-	UUID id = UUID::generate();
+	/*UUID id = UUID::generate();
 
 	ReadOnlyPointer<UUID> p = &id;
 	ConstReadOnlyPointer<UUID> cp = p;

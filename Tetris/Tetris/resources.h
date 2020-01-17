@@ -53,6 +53,8 @@ namespace Resource
 
 	extern const Folder ROOT;
 	extern const Folder FONT;
+	extern const Folder TEXTURES;
+	extern const Folder THEMES;
 }
 
 /* Special functions */

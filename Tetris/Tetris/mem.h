@@ -117,7 +117,7 @@ public:
 		basic_read_only_pointer<_Ty>{ ptr }
 	{}
 	inline ReadOnlyPointer(const ReadOnlyPointer<_Ty>& rop) :
-		basic_read_only_pointer<_Ty>{ rop._rop }
+		basic_read_only_pointer<_Ty>{ rop._ptr }
 	{}
 
 	inline _Ty* operator-> () { return basic_read_only_pointer<_Ty>::_ptr; }
@@ -167,6 +167,10 @@ public:
 		{}
 
 	public:
+		NodePointer() :
+			NodePointer{ nullptr, nullptr }
+		{}
+
 		inline SimpleLinkedList* owner() const { return _owner; }
 		inline const _Ty& data() const { return _node->data; }
 		inline NodePointer next() const { return { _owner, !_node ? nullptr : _node->next }; }
@@ -188,6 +192,9 @@ public:
 
 		inline NodePointer operator-- () { *this = prev(); return *this; }
 		inline NodePointer operator-- (int) { NodePointer p{ *this }; *this = prev(); return p; }
+
+		template<typename _Ty>
+		friend class SimpleLinkedList;
 	};
 
 
@@ -345,9 +352,9 @@ public:
 			action(node->data);
 	}
 
-	bool empty() const { return !size; }
+	bool empty() const { return !_size; }
 
-	size_t size() const { return size; }
+	size_t size() const { return _size; }
 
 	void clear()
 	{
@@ -359,6 +366,22 @@ public:
 			free(node);
 			node = next;
 		}
+		_head = _tail = nullptr;
+		_size = 0;
+	}
+
+	void clear(std::function<void(_Ty&)> pre_action)
+	{
+		Node* next;
+		Node* node = _head;
+		while (node)
+		{
+			next = node->next;
+			pre_action(node->data);
+			free(node);
+			node = next;
+		}
+		_head = _tail = nullptr;
 		_size = 0;
 	}
 
@@ -573,3 +596,100 @@ std::ostream& operator<< (std::ostream& os, const SimpleLinkedList<_Ty>& list)
 {
 	return os << to_string(list);
 }
+
+
+
+/* Non copyable mark */
+template<typename __Class>
+class __non_copyable
+{
+public:
+	__non_copyable(const __non_copyable&) = delete;
+	__Class& operator= (const __Class&) = delete;
+
+protected:
+	__non_copyable() = default;
+	~__non_copyable() = default;
+};
+#define NonCopyable(base_class) private __non_copyable<base_class>
+
+
+
+
+/* Manager */
+template<class _Ty>
+class Manager : NonCopyable(Manager<_Ty>)
+{
+public:
+	using Data = _Ty;
+	using DataPtr = _Ty*;
+	using DataRef = _Ty&;
+	using ConstDataRef = const _Ty&;
+
+private:
+	std::map<std::string, Data> _data;
+	Manager<Data>* _parent;
+
+public:
+	Manager(Manager<Data>* parent = nullptr) :
+		_data{},
+		_parent{ parent }
+	{}
+	virtual ~Manager() {}
+
+	template<class _DataType, class... _Args>
+	DataPtr create(const std::string& id, _Args&&... args)
+	{
+		static_assert(std::is_base_of<Data, _DataType>::value);
+		if (has(id))
+			return nullptr;
+
+		const auto& ret = _data.emplace(id, args...);
+		return ret.second ? **ret.first : nullptr;
+	}
+
+	template<class _DataType>
+	DataPtr create(const std::string& id)
+	{
+		static_assert(std::is_base_of<Data, _DataType>::value);
+		if (has(id))
+			return nullptr;
+
+		const std::pair<typename std::map<std::string, Data>::iterator, bool>& ret = _data.emplace(id);
+		return ret.second ? std::addressof(*ret.first) : nullptr;
+	}
+
+	DataRef get(const std::string& id) { return _data[id]; }
+	ConstDataRef get(const std::string& id) const { return _data[id]; }
+
+	bool has(const std::string& id) const
+	{
+		return _data.find(id) != _data.end();
+	}
+
+	bool destroy(const std::string& id)
+	{
+		const auto& it = _data.find(id);
+		if (id != _data.end())
+		{
+			_data.erase(it);
+			return true;
+		}
+		return false;
+	}
+
+	void clear()
+	{
+		_data.clear();
+	}
+
+	bool empty() const { return _data.empty(); }
+
+	size_t size() const { return _data.size(); }
+
+	operator bool() const { return !_data.empty(); }
+	bool operator! () const { return _data.empty(); }
+
+	DataRef operator[] (const std::string& id) { return _data[id]; }
+	ConstDataRef operator[] (const std::string& id) const { return _data[id]; }
+};

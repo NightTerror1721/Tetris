@@ -2,6 +2,7 @@
 
 #include <cinttypes>
 #include <SFML/System/Time.hpp>
+#include <SFML/System/Vector2.hpp>
 
 typedef std::int8_t		int8;
 typedef std::int16_t	int16;
@@ -16,3 +17,16 @@ typedef std::uint64_t	uint64;
 typedef unsigned char	byte;
 
 typedef sf::Time delta_t;
+
+using sf::Vector2f;
+using sf::Vector2i;
+using sf::Vector2u;
+typedef sf::Vector2f Vector2;
+
+
+
+template<typename _Ty>
+bool operator! (const sf::Vector2<_Ty>& v) { return !v.x && !v.y; }
+
+template<typename _Ty>
+constexpr bool is_zero(const sf::Vector2<_Ty>& v) { return !v.x && !v.y; }

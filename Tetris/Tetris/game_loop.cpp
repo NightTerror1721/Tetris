@@ -3,6 +3,7 @@
 #include "resources.h"
 
 GameController::GameController(const std::string& name) :
+	GameObjectRepository{ true },
 	_close{ true },
 	_window{},
 	_name{ name },
