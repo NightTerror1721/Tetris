@@ -14524,6 +14524,8 @@ class serializer
     @copyright Copyright (c) 2008-2009 Bjoern Hoehrmann <bjoern@hoehrmann.de>
     @sa http://bjoern.hoehrmann.de/utf-8/decoder/dfa/
     */
+#pragma warning(push)
+#pragma warning(disable : 28020)
     static std::uint8_t decode(std::uint8_t& state, std::uint32_t& codep, const std::uint8_t byte) noexcept
     {
         static const std::array<std::uint8_t, 400> utf8d =
@@ -14555,6 +14557,7 @@ class serializer
         state = utf8d[256u + state * 16u + type];
         return state;
     }
+#pragma warning(pop)
 
     /*
      * Overload to make the compiler happy while it is instantiating

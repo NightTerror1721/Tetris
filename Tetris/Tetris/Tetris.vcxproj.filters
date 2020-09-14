@@ -13,93 +13,18 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
-    <Filter Include="Archivos de encabezado\Support">
-      <UniqueIdentifier>{b8a1c7f6-bfd3-46f4-b631-106338afefe4}</UniqueIdentifier>
-      <Extensions>*.h</Extensions>
-    </Filter>
-    <Filter Include="Archivos de origen\Support">
-      <UniqueIdentifier>{90cdec76-fa7d-4925-957b-0820566018b8}</UniqueIdentifier>
-      <Extensions>*.cpp</Extensions>
-    </Filter>
-    <Filter Include="Archivos de encabezado\Engine">
-      <UniqueIdentifier>{14c62383-a53a-48dd-9296-1f4a8bea3e14}</UniqueIdentifier>
-      <Extensions>*.h</Extensions>
-    </Filter>
-    <Filter Include="Archivos de origen\Engine">
-      <UniqueIdentifier>{3026f746-12a8-45d8-8fb7-eb49a1e817e2}</UniqueIdentifier>
-      <Extensions>*.cpp</Extensions>
-    </Filter>
-    <Filter Include="Archivos de encabezado\Game">
-      <UniqueIdentifier>{935a0362-731c-47f4-a417-5b7a2158a00a}</UniqueIdentifier>
-      <Extensions>*.h</Extensions>
-    </Filter>
-    <Filter Include="Archivos de origen\Game">
-      <UniqueIdentifier>{a9959a04-cf5b-4b14-ac1c-915bf44509ff}</UniqueIdentifier>
-      <Extensions>*.cpp</Extensions>
-    </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="main.cpp">
+    <ClCompile Include="src\main.cpp">
       <Filter>Archivos de origen</Filter>
     </ClCompile>
-    <ClCompile Include="json.cpp">
-      <Filter>Archivos de origen\Support</Filter>
-    </ClCompile>
-    <ClCompile Include="resources.cpp">
-      <Filter>Archivos de origen\Support</Filter>
-    </ClCompile>
-    <ClCompile Include="game_loop.cpp">
-      <Filter>Archivos de origen\Engine</Filter>
-    </ClCompile>
-    <ClCompile Include="uuid.cpp">
-      <Filter>Archivos de origen\Support</Filter>
-    </ClCompile>
-    <ClCompile Include="game_objects.cpp">
-      <Filter>Archivos de origen\Engine</Filter>
-    </ClCompile>
-    <ClCompile Include="frames.cpp">
-      <Filter>Archivos de origen\Engine</Filter>
-    </ClCompile>
-    <ClCompile Include="themes.cpp">
-      <Filter>Archivos de origen\Game</Filter>
-    </ClCompile>
-    <ClCompile Include="sprites.cpp">
-      <Filter>Archivos de origen\Engine</Filter>
+    <ClCompile Include="src\common.cpp">
+      <Filter>Archivos de origen</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="json.h">
-      <Filter>Archivos de encabezado\Support</Filter>
-    </ClInclude>
-    <ClInclude Include="resources.h">
-      <Filter>Archivos de encabezado\Support</Filter>
-    </ClInclude>
-    <ClInclude Include="types.h">
-      <Filter>Archivos de encabezado\Support</Filter>
-    </ClInclude>
-    <ClInclude Include="game_loop.h">
-      <Filter>Archivos de encabezado\Engine</Filter>
-    </ClInclude>
-    <ClInclude Include="game_objects.h">
-      <Filter>Archivos de encabezado\Engine</Filter>
-    </ClInclude>
-    <ClInclude Include="uuid.h">
-      <Filter>Archivos de encabezado\Support</Filter>
-    </ClInclude>
-    <ClInclude Include="mem.h">
-      <Filter>Archivos de encabezado\Support</Filter>
-    </ClInclude>
-    <ClInclude Include="frames.h">
-      <Filter>Archivos de encabezado\Engine</Filter>
-    </ClInclude>
-    <ClInclude Include="themes.h">
-      <Filter>Archivos de encabezado\Game</Filter>
-    </ClInclude>
-    <ClInclude Include="sprites.h">
-      <Filter>Archivos de encabezado\Engine</Filter>
-    </ClInclude>
-    <ClInclude Include="globals.h">
-      <Filter>Archivos de encabezado\Support</Filter>
+    <ClInclude Include="src\common.h">
+      <Filter>Archivos de encabezado</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
