@@ -59,57 +59,67 @@ namespace resource
 		_path{ path }
 	{}
 	Folder::Folder(const Folder& parent, const Path& path) :
-		_path{ parent._path + path }
+		_path{ parent._path / path }
 	{}
 
-	bool Folder::_open(std::ifstream& stream)
+	bool Folder::_open(const String& filename, std::ifstream& stream) const
 	{
-		stream.open(_path, std::ios::in);
+		stream.open(_path / filename, std::ios::in);
 		return !stream.fail();
 	}
-	bool Folder::_open(std::ofstream& stream)
+	bool Folder::_open(const Path& path, std::ifstream& stream) const
 	{
-		stream.open(_path, std::ios::out);
+		stream.open(_path / path, std::ios::in);
+		return !stream.fail();
+	}
+	bool Folder::_open(const String& filename, std::ofstream& stream) const
+	{
+		stream.open(_path / filename, std::ios::out);
+		return !stream.fail();
+	}
+	bool Folder::_open(const Path& path, std::ofstream& stream) const
+	{
+		stream.open(_path / path, std::ios::out);
 		return !stream.fail();
 	}
 
-	bool Folder::openInput(std::ifstream& input) { return _open(input); }
-	bool Folder::openInput(const Function<void(std::istream&)>& action)
+	bool Folder::openInput(const String& filename, std::ifstream& input) const { return _open(filename, input); }
+	bool Folder::openInput(const Path& path, std::ifstream& input) const { return _open(path, input); }
+	bool Folder::openInput(const String& filename, const Function<void(std::istream&)>& action) const
 	{
 		std::ifstream stream;
-		if (_open(stream))
+		if (_open(filename, stream))
+			return action(stream), true;
+		return false;
+	}
+	bool Folder::openInput(const Path& path, const Function<void(std::istream&)>& action) const
+	{
+		std::ifstream stream;
+		if (_open(path, stream))
 			return action(stream), true;
 		return false;
 	}
 
-	bool Folder::openOutput(std::ofstream& output) { return _open(output); }
-	bool Folder::openOutput(const Function<void(std::ostream&)>& action)
+	bool Folder::openOutput(const String& filename, std::ofstream& output) const { return _open(filename, output); }
+	bool Folder::openOutput(const Path& path, std::ofstream& output) const { return _open(path, output); }
+	bool Folder::openOutput(const String& filename, const Function<void(std::ostream&)>& action) const
 	{
 		std::ofstream stream;
-		if (_open(stream))
+		if (_open(filename, stream))
+			return action(stream), true;
+		return false;
+	}
+	bool Folder::openOutput(const Path& path, const Function<void(std::ostream&)>& action) const
+	{
+		std::ofstream stream;
+		if (_open(path, stream))
 			return action(stream), true;
 		return false;
 	}
 
-	bool Folder::readJson(Json& json) { return openInput([&json](std::istream& is) { json = utils::read(is); }); }
+	bool Folder::readJson(const String& filename, Json& json) const { return openInput(filename, [&json](std::istream& is) { json = utils::read(is); }); }
+	bool Folder::readJson(const Path& path, Json& json) const { return openInput(path, [&json](std::istream& is) { json = utils::read(is); }); }
 
-	bool Folder::writeJson(const Json& json) { return openOutput([&json](std::ostream& os) { utils::write(os, json); }); }
+	bool Folder::writeJson(const String& filename, const Json& json) const { return openOutput(filename, [&json](std::ostream& os) { utils::write(os, json); }); }
+	bool Folder::writeJson(const Path& path, const Json& json) const { return openOutput(path, [&json](std::ostream& os) { utils::write(os, json); }); }
 }
-
-resource::Folder& operator<< (resource::Folder& left, std::istream& right)
-{
-	if (right)
-		left.openOutput([&right](std::ostream& os) { utils::stream_copy(os, right); });
-	return left;
-}
-resource::Folder& operator<< (resource::Folder& left, const Json& right) { return left.writeJson(right), left; }
-resource::Folder& operator<< (resource::Folder& left, const utils::JsonSerializable& right) { return left.extractAndWrite(right), left; }
-
-resource::Folder& operator>> (resource::Folder& left, std::ostream& right)
-{
-	if (right)
-		left.openInput([&right](std::istream& is) { utils::stream_copy(right, is); });
-	return left;
-}
-resource::Folder& operator>> (resource::Folder& left, Json& right) { return left.readJson(right), left; }
-resource::Folder& operator>> (resource::Folder& left, utils::JsonSerializable& right) { return left.readAndInject(right), left; }

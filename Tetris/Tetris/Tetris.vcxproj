@@ -20,10 +20,20 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\common.cpp" />
+    <ClCompile Include="src\game_basics.cpp" />
+    <ClCompile Include="src\game_controller.cpp" />
     <ClCompile Include="src\main.cpp" />
+    <ClCompile Include="src\scenario.cpp" />
+    <ClCompile Include="src\sprites.cpp" />
+    <ClCompile Include="src\theme.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\common.h" />
+    <ClInclude Include="src\game_basics.h" />
+    <ClInclude Include="src\game_controller.h" />
+    <ClInclude Include="src\scenario.h" />
+    <ClInclude Include="src\sprites.h" />
+    <ClInclude Include="src\theme.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
