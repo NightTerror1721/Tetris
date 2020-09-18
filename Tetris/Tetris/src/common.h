@@ -15,6 +15,7 @@
 #include <memory>
 #include <vector>
 #include <string>
+#include <queue>
 #include <cmath>
 #include <list>
 #include <map>
@@ -360,6 +361,13 @@ namespace resource
 	static const Folder root = "data"_p;
 	static const Folder textures = { root, "textures"_p };
 	static const Folder themes = { textures, "themes"_p };
+	static const Folder font = { root, "font"_p };
+}
+
+
+namespace utils
+{
+	void load_font(sf::Font& font, const String& name);
 }
 
 

@@ -1,5 +1,7 @@
 #include "game_controller.h"
 
+#include "fonts.h"
+
 GameController global::game{ "!Kram Tetris" };
 
 
@@ -13,7 +15,8 @@ GameController::GameController(const std::string& name) :
 	_phUps{},
 	_name{ name },
 	_vmode{ 640, 480 },
-	_wstyle{ WindowStyle::Default }
+	_wstyle{ WindowStyle::Default },
+	_fps{}
 {}
 GameController::~GameController() {}
 
@@ -67,29 +70,33 @@ void GameController::loop()
 	while (!_close)
 	{
 		processEvents();
-
-		while (_phAccumulator > _phUps)
-		{
-			sf::Time delta = _deltaClock.restart();
-			_phAccumulator -= _phUps;
-			update(delta);
-		}
-
+		update();
 		render();
 	}
 }
 
 void GameController::init()
 {
-	//Properties::load();
-	//pylib::loadResourceCaches();
+	global::fonts.loadAll();
+	_fps.init();
+	_fps.enabled(true);
 	resetWindow();
 }
-void GameController::update(const sf::Time& delta)
+void GameController::update()
 {
 	if (!_close)
-		for (GameObject& obj : *this)
-			obj.update(delta);
+	{
+		sf::Time delta = _deltaClock.restart();
+		_phAccumulator += delta;
+
+		if (_phAccumulator > _phUps)
+		{
+			_phAccumulator -= _phUps;
+			_fps.update(delta);
+			for (GameObject& obj : *this)
+				obj.update(delta);
+		}
+	}
 }
 void GameController::render()
 {
@@ -98,7 +105,9 @@ void GameController::render()
 		_window.clear();
 		for (GameObject& obj : *this)
 			obj.render(_window);
+		_fps.render(_window);
 		_window.display();
+
 	}
 }
 void GameController::processEvents()
@@ -124,4 +133,40 @@ void GameController::onCreate(GameObject& obj)
 }
 void GameController::onDestroy(GameObject& obj)
 {
+}
+
+
+
+void FPSMonitor::init()
+{
+	_text.setFillColor(sf::Color::Green);
+	_text.setCharacterSize(24);
+
+	_text.setFont(global::fonts["arial"]);
+
+	_text.setPosition(10, 10);
+
+	_text.setString("0 fps");
+}
+
+void FPSMonitor::update(const sf::Time& delta)
+{
+	_remaining -= static_cast<Int64>(delta.asMicroseconds());
+	_current++;
+
+	while (_remaining < 0)
+	{
+		_remaining += identity;
+		_last = _current;
+		_current = 0;
+
+		_text.setString(std::to_string(_last) + " fps");
+	}
+}
+void FPSMonitor::render(sf::RenderTarget& canvas)
+{
+	if (_enabled)
+	{
+		canvas.draw(_text);
+	}
 }

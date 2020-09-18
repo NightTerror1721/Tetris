@@ -272,82 +272,40 @@ public:
 
 	inline _Ty& operator[] (const String& name) { return get(name); }
 	inline const _Ty& operator[] (const String& name) const { return get(name); }
+
+	inline _Ty& operator[] (const char* name) { return get(String{ name }); }
+	inline const _Ty& operator[] (const char* name) const { return get(String{ name }); }
 };
 
 
 
-/*template<typename _Ty>
-class PolimorphycManager
+class Frame
 {
 private:
-	using Allocator = utils::Allocator<_Ty>;
-
-private:
-	PolimorphycManager* _parent;
-	std::unordered_map<String, Allocator> _elems;
+	sf::RectangleShape _shape;
+	sf::RenderTexture _canvas;
 
 public:
-	PolimorphycManager() = default;
-	PolimorphycManager(const PolimorphycManager&) = delete;
-	PolimorphycManager(PolimorphycManager&&) noexcept = default;
-	virtual ~PolimorphycManager() = default;
+	Frame(const Vec2u& textureSize, const Vec2f& shapeSize = {}, const Vec2f& shapePosition = {});
+	Frame(const Frame&) = delete;
+	Frame(Frame&&) noexcept = default;
+	virtual ~Frame() = default;
 
-	PolimorphycManager& operator= (const PolimorphycManager&) = delete;
-	PolimorphycManager& operator= (PolimorphycManager&&) noexcept = default;
+	Frame& operator= (const Frame&) = delete;
+	Frame& operator= (Frame&&) noexcept = default;
+
+	inline const Vec2f& getPosition() const { return _shape.getPosition(); }
+	inline const Vec2f& getSize() const { return _shape.getSize(); }
+
+	inline void setPosition(const Vec2f& position) { _shape.setPosition(position); }
+	inline void setSize(const Vec2f& size) { _shape.setSize(size); }
 
 protected:
-	template<typename _ElemTy, typename... _Args>
-	requires utils::SameOrDerived<_Ty, _ElemTy>
-	_Ty* create(const String& name, _Args&&... args)
-	{
-		auto result = _elems.insert(name, Allocator::template make<_ElemTy>(std::forward(args)...));
-		if (result.second)
-			return *result.first->second.element);
-		return nullptr;
-	}
+	void rebuild(const Vec2u& textureSize, const Vec2f& shapeSize = {}, const Vec2f& shapePosition = {});
 
-public:
-	PolimorphycManager(PolimorphycManager* parent) :
-		_parent{ parent },
-		_elems{}
-	{}
-
-	inline PolimorphycManager* parent() { return _parent; }
-
-	inline operator bool() const { return !_elems.empty(); }
-	inline bool operator! () const { return _elems.empty(); }
-
-	inline bool empty() const { return _elems.empty(); }
-	inline Size size() const { return _elems.size(); }
-
-	inline bool has(const String& name) const
-	{
-		return _elems.find(name) != _elems.end() || (_parent && _parent->has(name));
-	}
-
-	_Ty& get(const String& name)
-	{
-		auto it = _elems.find(name);
-		if (it != _elems.end())
-			return *it->second.element;
-		if (!_parent)
-			throw NoSuchElement{};
-		return _parent->get(name);
-	}
-	inline const _Ty& get(const String& name) const
-	{
-		auto it = _elems.find(name);
-		if (it != _elems.end())
-			return *it->second.element;
-		if (!_parent)
-			throw NoSuchElement{};
-		return _parent->get(name);
-	}
-
-	inline bool erase(const String& name) { return _elems.erase(name) != 0; }
-
-	inline void clear() { _elems.clear(); }
-
-	inline _Ty& operator[] (const String& name) { return get(name); }
-	inline const _Ty& operator[] (const String& name) const { return get(name); }
-};*/
+	inline void clearCanvas() { _canvas.clear(); }
+	inline void displayCanvas() { _canvas.display(); }
+	inline void renderCanvas(sf::RenderTarget& canvas, bool display = true) { if (display) _canvas.display(); canvas.draw(_shape); }
+	inline void draw(const sf::Drawable& drawable) { _canvas.draw(drawable); }
+	inline sf::RenderTarget& canvas() { return _canvas; }
+};

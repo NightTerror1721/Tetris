@@ -13,6 +13,28 @@ enum class WindowStyle : UInt32
 	Default = Titlebar | Resize | Close ///< Default window style
 };
 
+class FPSMonitor
+{
+private:
+	static constexpr Int64 identity = 1000000;
+
+	Int64 _remaining = identity;
+	unsigned int _current = 0;
+	unsigned int _last = 0;
+	bool _enabled = false;
+
+	sf::Text _text;
+
+public:
+	void init();
+
+	void update(const sf::Time& delta);
+	void render(sf::RenderTarget& canvas);
+
+	inline bool enabled() const { return _enabled; }
+	inline void enabled(bool flag) { _enabled = flag; }
+};
+
 class GameController : private GameObjectContainer<GameObject>
 {
 private:
@@ -26,6 +48,8 @@ private:
 	std::string _name;
 	sf::VideoMode _vmode;
 	WindowStyle _wstyle;
+
+	FPSMonitor _fps;
 
 public:
 	GameController(const GameController&) = delete;
@@ -51,7 +75,7 @@ private:
 	void loop();
 
 	void init();
-	void update(const sf::Time& delta);
+	void update();
 	void render();
 	void processEvents();
 

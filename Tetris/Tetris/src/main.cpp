@@ -2,6 +2,7 @@
 #include "game_controller.h"
 #include "theme.h"
 #include "scenario.h"
+#include "fonts.h"
 
 
 struct Tester : public GameObject
@@ -27,13 +28,12 @@ int main(int argc, char** argv)
 	global::theme.load("default");
 
 	Tester& tester = global::game.objects().emplace<Tester>();
-	std::cout << tester.uid() << std::endl;
 
 	tester.field.cell(0, 0).changeColor(CellColor::Red);
 	tester.field.cell(0, 1).changeColor(CellColor::Red);
 	tester.field.cell(1, 0).changeColor(CellColor::Red);
 
-	global::game.videoMode({ 1280, 1000 });
+	global::game.videoMode({ 1600, 900 });
 	
 	global::game.start();
 

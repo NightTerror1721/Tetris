@@ -123,3 +123,12 @@ namespace resource
 	bool Folder::writeJson(const String& filename, const Json& json) const { return openOutput(filename, [&json](std::ostream& os) { utils::write(os, json); }); }
 	bool Folder::writeJson(const Path& path, const Json& json) const { return openOutput(path, [&json](std::ostream& os) { utils::write(os, json); }); }
 }
+
+
+
+
+void utils::load_font(sf::Font& font, const String& name)
+{
+	Path path = resource::font.pathOf(name);
+	font.loadFromFile(path.string());
+}
