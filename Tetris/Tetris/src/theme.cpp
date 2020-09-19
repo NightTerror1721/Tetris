@@ -24,7 +24,8 @@ void Theme::_load(const String& name, const Json& json)
 		_name = utils::opt<String>(json, "name", name);
 	else _name = name;
 
-	_loadCellColors(json);
+	_loadCellColors(json, false);
+	_loadCellColors(json, true);
 }
 
 Json Theme::_loadJson(const String& name) const
@@ -36,35 +37,38 @@ Json Theme::_loadJson(const String& name) const
 	return json;
 }
 
-void Theme::_loadCellColors(const Json& json)
+void Theme::_loadCellColors(const Json& json, bool ghost)
 {
-	if (!utils::has(json, "cell_colors"))
+	const char* const obj_name = ghost ? "ghost_colors" : "cell_colors";
+
+	if (!utils::has(json, obj_name))
 		return;
 
-	const Json& base = json["cell_colors"];
+	const Json& base = json[obj_name];
 	if (!base.is_object())
 		return;
 
-	_loadCellColors(base, {
-		{ "empty", 0 },
-		{ "red", 1 },
-		{ "orange", 2 },
-		{ "yellow", 3 },
-		{ "green", 4 },
-		{ "cyan", 5 },
-		{ "blue", 6 },
-		{ "purple", 7 },
-		{ "gray", 8 }
+	_loadCellColors(base, ghost, {
+		{ "red", 0 },
+		{ "orange", 1 },
+		{ "yellow", 2 },
+		{ "green", 3 },
+		{ "cyan", 4 },
+		{ "blue", 5 },
+		{ "purple", 6 },
+		{ "gray", 7 }
 	});
 }
 
-void Theme::_loadCellColors(const Json& json, const std::vector<std::pair<const char*, Offset>>& ids)
+void Theme::_loadCellColors(const Json& json, bool ghost, const std::vector<std::pair<const char*, Offset>>& ids)
 {
+	sf::Texture** colors = ghost ? _ghostColors : _cellColors;
+	String name_prefix = ghost ? "cell.ghost." : "cell.";
 	for (const auto& id : ids)
 	{
 		if (!utils::has(json, id.first))
 			continue;
 
-		_cellColors[id.second] = &_loadTexture(TextureInfo::read(json[id.first]), id.first);
+		colors[id.second] = &_loadTexture(TextureInfo::read(json[id.first]), name_prefix + id.first);
 	}
 }

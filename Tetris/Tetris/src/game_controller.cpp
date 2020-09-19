@@ -16,8 +16,20 @@ GameController::GameController(const std::string& name) :
 	_name{ name },
 	_vmode{ 640, 480 },
 	_wstyle{ WindowStyle::Default },
+	_virtualCanvas{},
+	_virtualWindow{},
+	_view{},
 	_fps{}
-{}
+{
+	_virtualCanvas.create(canvas_width, canvas_height);
+
+	_virtualWindow.setSize({ static_cast<float>(canvas_width), static_cast<float>(canvas_height) });
+	_virtualWindow.setPosition(0, 0);
+	_virtualWindow.setTexture(&_virtualCanvas.getTexture());
+
+	_view.setSize({ static_cast<float>(canvas_width), static_cast<float>(canvas_height) });
+	_view.setCenter({ static_cast<float>(canvas_width / 2), static_cast<float>(canvas_height / 2) });
+}
 GameController::~GameController() {}
 
 void GameController::start()
@@ -103,11 +115,20 @@ void GameController::render()
 	if (!_close)
 	{
 		_window.clear();
-		for (GameObject& obj : *this)
-			obj.render(_window);
-		_fps.render(_window);
-		_window.display();
+		_virtualCanvas.clear();
 
+		for (GameObject& obj : *this)
+			obj.render(_virtualCanvas);
+
+		_virtualCanvas.display();
+
+		_window.setView(_view);
+		_window.draw(_virtualWindow);
+		_window.setView(_window.getDefaultView());
+
+		_fps.render(_window);
+
+		_window.display();
 	}
 }
 void GameController::processEvents()

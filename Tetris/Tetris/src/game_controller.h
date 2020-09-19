@@ -37,6 +37,10 @@ public:
 
 class GameController : private GameObjectContainer<GameObject>
 {
+public:
+	static constexpr int canvas_width = utils::game_canvas_with;
+	static constexpr int canvas_height = utils::game_canvas_height;
+
 private:
 	bool _close;
 	sf::RenderWindow _window;
@@ -48,6 +52,10 @@ private:
 	std::string _name;
 	sf::VideoMode _vmode;
 	WindowStyle _wstyle;
+
+	sf::RenderTexture _virtualCanvas;
+	sf::RectangleShape _virtualWindow;
+	sf::View _view;
 
 	FPSMonitor _fps;
 

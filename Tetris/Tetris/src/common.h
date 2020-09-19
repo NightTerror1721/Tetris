@@ -12,6 +12,8 @@
 #include <fstream>
 #include <compare>
 #include <utility>
+#include <chrono>
+#include <random>
 #include <memory>
 #include <vector>
 #include <string>
@@ -144,6 +146,17 @@ namespace utils
 			dst.write(buffer, count);
 		}
 	}
+
+	inline Int64 system_time()
+	{
+		return std::chrono::system_clock::now().time_since_epoch().count();
+	}
+}
+
+namespace utils
+{
+	static constexpr int game_canvas_with = 1920;
+	static constexpr int game_canvas_height = 1080;
 }
 
 

@@ -7,19 +7,22 @@
 
 struct Tester : public GameObject
 {
-	Field field;
+	Scenario scenario;
 
 	Tester() : GameObject{} {};
 
 	void render(sf::RenderTarget& canvas) override
 	{
-		field.render(canvas);
+		scenario.render(canvas);
 	}
 	void update(const sf::Time& delta) override
 	{
-		field.update(delta);
+		scenario.update(delta);
 	}
-	void dispatchEvent(const sf::Event& event) override {}
+	void dispatchEvent(const sf::Event& event) override
+	{
+		scenario.dispatchEvent(event);
+	}
 };
 
 
@@ -29,9 +32,23 @@ int main(int argc, char** argv)
 
 	Tester& tester = global::game.objects().emplace<Tester>();
 
-	tester.field.cell(0, 0).changeColor(CellColor::Red);
-	tester.field.cell(0, 1).changeColor(CellColor::Red);
-	tester.field.cell(1, 0).changeColor(CellColor::Red);
+	tester.scenario.field().cell(0, 0).changeColor(CellColor::Red);
+	tester.scenario.field().cell(0, 1).changeColor(CellColor::Red);
+	tester.scenario.field().cell(1, 0).changeColor(CellColor::Red);
+
+	tester.scenario.setPosition({
+		(utils::game_canvas_with / 2) - (Scenario::width / 2),
+		(utils::game_canvas_height / 2) - (Scenario::height / 2)
+	});
+
+	tester.scenario.setPerimeterColor(sf::Color::Blue);
+	tester.scenario.setPerimeterThickness(3);
+
+	tester.scenario.field().setPerimeterColor(sf::Color::Blue);
+	tester.scenario.field().setPerimeterThickness(3);
+
+	tester.scenario.nextTetrominoManager().setPerimeterColor(sf::Color::Blue);
+	tester.scenario.nextTetrominoManager().setPerimeterThickness(3);
 
 	global::game.videoMode({ 1600, 900 });
 	

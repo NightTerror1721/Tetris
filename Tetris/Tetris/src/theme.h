@@ -24,6 +24,8 @@ namespace utils
 	constexpr Offset cellcolor_id(CellColor color) { return static_cast<Offset>(color); }
 
 	constexpr CellColor id_to_cellcolor(Offset id) { return static_cast<CellColor>(utils::clamp<Offset, Offset, Offset>(id, 0, cell_color_count - 1)); }
+
+	constexpr CellColor id_to_noempty_cellcolor(Offset id) { return static_cast<CellColor>(utils::clamp<Offset, Offset, Offset>(id, 1, cell_color_count - 1)); }
 }
 
 class Theme
@@ -34,7 +36,8 @@ private:
 	String _folderName;
 	String _name;
 
-	Texture* _cellColors[utils::cell_color_count] = {};
+	Texture* _cellColors[utils::cell_color_count - 1] = {};
+	Texture* _ghostColors[utils::cell_color_count - 1] = {};
 
 public:
 	Theme() = default;
@@ -45,7 +48,8 @@ public:
 	Theme& operator= (const Theme&) = delete;
 	Theme& operator= (Theme&&) noexcept = delete;
 
-	inline const Texture& cellColorTexture(CellColor cell) { return *_cellColors[utils::cellcolor_id(cell)]; }
+	inline const Texture* cellColorTexture(CellColor cell) { return cell == CellColor::Empty ? nullptr : _cellColors[utils::cellcolor_id(cell) - 1]; }
+	inline const Texture* ghostColorTexture(CellColor cell) { return cell == CellColor::Empty ? nullptr : _ghostColors[utils::cellcolor_id(cell) - 1]; }
 
 private:
 	Path _getPath(const String& filename);
@@ -54,8 +58,8 @@ private:
 	Json _loadJson(const String& name) const;
 	void _load(const String& name, const Json& json);
 
-	void _loadCellColors(const Json& json);
-	void _loadCellColors(const Json& json, const std::vector<std::pair<const char*, Offset>>& ids);
+	void _loadCellColors(const Json& json, bool ghost);
+	void _loadCellColors(const Json& json, bool ghost, const std::vector<std::pair<const char*, Offset>>& ids);
 
 public:
 	inline void load(const String& name) { _load(name, _loadJson(name)); }
