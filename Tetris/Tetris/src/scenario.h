@@ -28,6 +28,8 @@ public:
 
 	void changeColor(CellColor color);
 
+	void ghostify();
+
 	void setPosition(int row, int column);
 
 	inline void render(sf::RenderTarget& canvas) const
@@ -44,6 +46,9 @@ public:
 	inline bool operator! () const { return _color == CellColor::Empty; }
 
 	inline Cell(int row, int column, CellColor color = CellColor::Yellow) : Cell(color) { setPosition(row, column); }
+
+	inline int row() const { return _row; }
+	inline int column() const { return _column; }
 };
 
 
@@ -114,6 +119,8 @@ public:
 	static constexpr int width = rows * Cell::width;
 	static constexpr int height = columns * Cell::height;
 
+	static constexpr int max_rotation_try = 5;
+
 private:
 	static constexpr int cellCount = rows * columns;
 
@@ -126,6 +133,9 @@ private:
 
 	mutable int _idx[4] = {};
 	mutable bool _validIdx = false;
+
+	mutable Vec2i _vecs[4] = {};
+	mutable bool _validVecs = false;
 
 public:
 	Tetromino() = default;
@@ -140,6 +150,8 @@ public:
 
 	void build(Type type);
 
+	void ghostify();
+
 	void setPosition(int row, int column);
 
 	void move(int rowDelta, int columnDelta);
@@ -147,16 +159,28 @@ public:
 	void leftRotate();
 	void rightRotate();
 
+	void kick(RotationState prevState, unsigned int tryId);
+
 	std::array<int, 4> cellsIndex() const;
+	std::array<Vec2i, 4> cellsAsVector() const;
 
 	CellColor color() const;
 
 public:
 	inline void moveDown() { move(-1, 0); }
+	inline void moveLeft() { move(0, -1); }
+	inline void moveRight() { move(0, 1); }
 
 	inline int row() const { return _row; }
 	inline int column() const { return _column; }
 	inline Vec2i getPosition() const { return { _column, _row }; }
+
+	inline Type type() const { return _type; }
+
+	inline RotationState rotationState() const { return _rotation; }
+
+private:
+	static Vec2i _kickFactors(unsigned int tryId, Type type, RotationState rstate);
 };
 
 
@@ -187,12 +211,15 @@ public:
 	Field& operator= (const Field&) = default;
 	Field& operator= (Field&&) noexcept = default;
 
-	void render(sf::RenderTarget& canvas, const Tetromino* tetromino = nullptr);
+	void render(sf::RenderTarget& canvas, const Tetromino* tetromino = nullptr, const Tetromino* ghost = nullptr);
 	void update(const sf::Time& delta);
 
 	bool collide(const Tetromino& tetromino);
 	bool isTopOut(const Tetromino& tetromino);
 	bool isBottomOut(const Tetromino& tetromino);
+	bool isLeftOut(const Tetromino& tetromino);
+	bool isRightOut(const Tetromino& tetromino);
+	bool isInside(const Tetromino& tetromino);
 
 	void insert(const Tetromino& tetromino);
 
@@ -216,12 +243,17 @@ class GravityClock
 {
 private:
 	static constexpr Int64 min_waiting_time = static_cast<Int64>(0.05 / 60.0 * 1000000.0); // 20G //
+	static constexpr Int64 soft_drop_time = static_cast<Int64>(1.0 / 60.0 * 1000000.0); // 1G //
 	static constexpr Int64 freeze_time = static_cast<Int64>(0.5 * 1000000.0); // 0.5 seconds //
+
+public:
+	enum class Mode { Normal, Soft, Hard };
 
 private:
 	sf::Time _waiting;
 	sf::Time _remaining;
 	sf::Time _freezing;
+	Mode _mode = Mode::Normal;
 
 public:
 	GravityClock() = default;
@@ -239,14 +271,22 @@ public:
 
 	void registerDrop();
 
+	void resetWaiting();
+
+	void setMode(Mode mode);
+
+	inline void resetMode() { _mode = Mode::Normal; }
+	inline Mode mode() const { return _mode; }
+
 	inline void freeze() { _freezing = sf::microseconds(freeze_time); }
-
-	inline void resetWaiting() { _remaining = _waiting; }
 	inline void resetFreezing() { _freezing = sf::Time::Zero; }
-	inline void reset() { resetWaiting(), resetFreezing(); }
-
-	inline bool isWaiting() const { return _remaining > sf::Time::Zero; }
+	inline void reset() { resetMode(), resetWaiting(), resetFreezing(); }
+	
 	inline bool isFrozen() const { return _freezing > sf::Time::Zero; }
+	inline bool isWaiting() const
+	{
+		return _mode != Mode::Hard && _remaining > sf::Time::Zero;
+	}
 };
 
 
@@ -319,6 +359,7 @@ public:
 
 public:
 	enum class State { Stopped, Running, GameOver };
+	enum class Action { None, MoveLeft, MoveRight, RotateLeft, RotateRight, NormalDrop, SoftDrop, HardDrop, Hold };
 
 private:
 	enum class TetrominoState { None, Dropping, Frozen, Inserting };
@@ -328,11 +369,14 @@ private:
 
 	TetrominoManager _nextTetrominos;
 	Tetromino _currentTetromino;
+	Tetromino _ghostTetromino;
 	TetrominoState _currentTetrominoState;
 
 	GravityClock _gravity;
 
 	State _state;
+
+	std::queue<Action> _actionQueue;
 
 public:
 	Scenario();
@@ -348,6 +392,10 @@ public:
 	inline Field& field() { return _field; }
 	inline TetrominoManager& nextTetrominoManager() { return _nextTetrominos; }
 
+	inline void setLevel(unsigned int level) { _gravity.setGravityLevel(level); }
+
+	inline void pushAction(Action action) { _actionQueue.push(action); }
+
 public:
 	void render(sf::RenderTarget& canvas);
 
@@ -356,7 +404,22 @@ public:
 	void dispatchEvent(const sf::Event& event);
 
 private:
-	void _spawnTetromino();
+	void _updateActions();
 	void _updateCurrentTetromino(const sf::Time& delta);
+
+	void _spawnTetromino();
 	void _dropCurrentTetromino();
+	void _horizontalMoveTetromino(bool left);
+	void _rotateCurrentTetromino(bool left);
+
+	void _evaluateTetrominoStateAfterAction();
+
+	void _generateGhostTetromino();
+
+private:
+	inline void _moveLeftTetromino() { _horizontalMoveTetromino(true); }
+	inline void _moveRightTetromino() { _horizontalMoveTetromino(false); }
+
+	inline void _rotateLeftCurrentTetromino() { _rotateCurrentTetromino(true); }
+	inline void _rotateRightCurrentTetromino() { _rotateCurrentTetromino(false); }
 };
