@@ -296,6 +296,8 @@ void Tetromino::setPosition(int row, int column)
 
 void Tetromino::move(int rowDelta, int columnDelta) { setPosition(_row + rowDelta, _column + columnDelta); }
 
+void Tetromino::moveToOrigin() { setPosition(Field::rows - 1, 0); }
+
 void Tetromino::leftRotate()
 {
 	--_rotation;
@@ -662,6 +664,43 @@ void TetrominoManager::generate()
 
 
 
+HoldManager::HoldManager() :
+	Frame{
+		{ static_cast<unsigned int>(Tetromino::width), static_cast<unsigned int>(Tetromino::height) },
+		{ static_cast<float>(HoldManager::width), static_cast<float>(HoldManager::height) }
+	},
+	_tetromino{},
+	_empty{ true },
+	_lock{ false }
+{}
+
+void HoldManager::render(sf::RenderTarget& canvas)
+{
+	clearCanvas();
+
+	if (!_empty)
+		_tetromino.render(Frame::canvas());
+
+	renderCanvas(canvas);
+}
+
+void HoldManager::hold(Tetromino::Type type)
+{
+	if (_empty || !_lock)
+	{
+		_tetromino.setPosition(Field::rows - 6, 0);
+		_tetromino.build(type);
+		_lock = !_empty;
+		_empty = false;
+	}
+}
+
+
+
+
+
+
+
 
 void ActionRepeatManager::update(const sf::Time& delta)
 {
@@ -705,6 +744,7 @@ Scenario::Scenario() :
 		{ static_cast<float>(Scenario::width), static_cast<float>(Scenario::height) }
 	},
 	_field{},
+	_hold{},
 	_nextTetrominos{},
 	_currentTetromino{},
 	_currentTetrominoState{ TetrominoState::None },
@@ -724,6 +764,11 @@ Scenario::Scenario() :
 		static_cast<float>(_field.getPosition().y)
 	});
 
+	_hold.setPosition({
+		static_cast<float>(Scenario::hold_border),
+		static_cast<float>(_field.getPosition().y)
+	});
+
 	_gravity.setGravityLevel(1);
 }
 
@@ -737,6 +782,7 @@ void Scenario::render(sf::RenderTarget& canvas)
 		_currentTetrominoState != TetrominoState::Dropping ? nullptr : &_ghostTetromino
 	);
 	_nextTetrominos.render(fcanvas);
+	_hold.render(fcanvas);
 
 	renderCanvas(canvas);
 }
@@ -784,6 +830,10 @@ void Scenario::dispatchEvent(const sf::Event& event)
 
 			case sf::Keyboard::Down:
 				pushAction(Action::SoftDrop);
+				break;
+
+			case sf::Keyboard::Tab:
+				pushAction(Action::Hold);
 				break;
 		}
 	}
@@ -855,6 +905,7 @@ void Scenario::_updateActions(const sf::Time& delta)
 			break;
 
 		case Action::Hold:
+			_holdTetromino();
 			break;
 		}
 		_actionQueue.pop();
@@ -893,18 +944,22 @@ void Scenario::_updateCurrentTetromino(const sf::Time& delta)
 				if(_bottomRowToErase >= 0 && _bottomRowToErase < Field::rows)
 					_field.dropRows(_bottomRowToErase);
 				_bottomRowToErase = -1;
+
+				_hold.unlock();
 			}
 			break;
 
 		case TetrominoState::None:
-			_spawnTetromino();
+			_spawnTetromino(false);
 			break;
 	}
 }
 
-void Scenario::_spawnTetromino()
+void Scenario::_spawnTetromino(bool useHold)
 {
-	_currentTetromino = _nextTetrominos.next();
+	if (useHold)
+		_currentTetromino = _hold.tetromino();
+	else _currentTetromino = _nextTetrominos.next();
 
 	/* Try to situate into origin */
 	_currentTetromino.setPosition(Field::rows - 5, (Field::columns / 2) - (Tetromino::columns / 2));
@@ -999,6 +1054,24 @@ void Scenario::_rotateCurrentTetromino(bool left)
 	}
 
 	_evaluateTetrominoStateAfterAction();
+}
+
+void Scenario::_holdTetromino()
+{
+	if (_currentTetrominoState != TetrominoState::Dropping || _hold.isLock())
+		return;
+	
+	if (_hold.empty())
+	{
+		_hold.hold(_currentTetromino);
+		_spawnTetromino(false);
+	}
+	else
+	{
+		Tetromino::Type type = _currentTetromino.type();
+		_spawnTetromino(true);
+		_hold.hold(type);
+	}
 }
 
 void Scenario::_evaluateTetrominoStateAfterAction()

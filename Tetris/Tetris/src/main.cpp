@@ -46,6 +46,9 @@ int main(int argc, char** argv)
 	tester.scenario.nextTetrominoManager().setPerimeterColor(sf::Color::Blue);
 	tester.scenario.nextTetrominoManager().setPerimeterThickness(3);
 
+	tester.scenario.holdManager().setPerimeterColor(sf::Color::Blue);
+	tester.scenario.holdManager().setPerimeterThickness(3);
+
 	global::game.videoMode({ 1600, 900 });
 	
 	global::game.start();

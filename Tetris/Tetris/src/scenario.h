@@ -155,6 +155,7 @@ public:
 	void setPosition(int row, int column);
 
 	void move(int rowDelta, int columnDelta);
+	void moveToOrigin();
 
 	void leftRotate();
 	void rightRotate();
@@ -167,6 +168,7 @@ public:
 	CellColor color() const;
 
 public:
+
 	inline void moveDown() { move(-1, 0); }
 	inline void moveLeft() { move(0, -1); }
 	inline void moveRight() { move(0, 1); }
@@ -358,6 +360,43 @@ private:
 
 
 
+class HoldManager : public Frame
+{
+public:
+	static constexpr int width = static_cast<int>(Tetromino::width * 0.6);
+	static constexpr int height = static_cast<int>(Tetromino::height * 0.6);
+
+private:
+	Tetromino _tetromino;
+	bool _empty;
+	bool _lock;
+
+public:
+	HoldManager();
+	HoldManager(const HoldManager&) = default;
+	HoldManager(HoldManager&&) noexcept = default;
+	~HoldManager() = default;
+
+	HoldManager& operator= (const HoldManager&) = default;
+	HoldManager& operator= (HoldManager&&) noexcept = default;
+
+	void render(sf::RenderTarget& canvas);
+
+	void hold(Tetromino::Type type);
+
+	inline bool empty() const { return _empty; }
+
+	inline void hold(const Tetromino& tetromino) { hold(tetromino.type()); }
+
+	inline const Tetromino& tetromino() const { return _tetromino; }
+
+	inline bool isLock() { return _lock; }
+
+	inline void unlock() { _lock = false; }
+};
+
+
+
 enum class ScenarioAction
 {
 	None,
@@ -388,6 +427,7 @@ public:
 	ActionRepeatManager() = default;
 	ActionRepeatManager(const ActionRepeatManager&) = default;
 	ActionRepeatManager(ActionRepeatManager&&) noexcept = default;
+	~ActionRepeatManager() = default;
 
 	ActionRepeatManager& operator= (const ActionRepeatManager&) = default;
 	ActionRepeatManager& operator= (ActionRepeatManager&&) noexcept = default;
@@ -409,13 +449,10 @@ public:
 class Scenario : public Frame
 {
 public:
-	static constexpr int hold_tetromino_width = static_cast<int>(Tetromino::width * 0.6);
-	static constexpr int hold_tetromino_height = static_cast<int>(Tetromino::height * 0.6);
-
 	static constexpr int hold_border = 10;
 	static constexpr int next_border = 10;
 
-	static constexpr int width = Field::width + TetrominoManager::width + hold_tetromino_width + (hold_border * 2) + (next_border * 2);
+	static constexpr int width = Field::width + TetrominoManager::width + HoldManager::width + (hold_border * 2) + (next_border * 2);
 	static constexpr int height = Field::height + 180;
 
 public:
@@ -429,6 +466,7 @@ private:
 private:
 	Field _field;
 
+	HoldManager _hold;
 	TetrominoManager _nextTetrominos;
 	Tetromino _currentTetromino;
 	Tetromino _ghostTetromino;
@@ -457,6 +495,7 @@ public:
 
 	inline Field& field() { return _field; }
 	inline TetrominoManager& nextTetrominoManager() { return _nextTetrominos; }
+	inline HoldManager& holdManager() { return _hold; }
 
 	inline void setLevel(unsigned int level) { _gravity.setGravityLevel(level); }
 
@@ -473,10 +512,11 @@ private:
 	void _updateActions(const sf::Time& delta);
 	void _updateCurrentTetromino(const sf::Time& delta);
 
-	void _spawnTetromino();
+	void _spawnTetromino(bool useHold);
 	void _dropCurrentTetromino();
 	void _horizontalMoveTetromino(bool left);
 	void _rotateCurrentTetromino(bool left);
+	void _holdTetromino();
 
 	void _evaluateTetrominoStateAfterAction();
 
