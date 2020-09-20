@@ -146,6 +146,45 @@ void Field::insert(const Tetromino& tetromino)
 		_cells[idx].changeColor(color);
 }
 
+bool Field::eraseIfComplete(int row)
+{
+	row = utils::clamp(row, 0, Field::rows);
+	for (int column = 0; column < Field::columns; column++)
+		if (_cells[row * Field::columns + column].empty())
+			return false;
+
+	for (int column = 0; column < Field::columns; column++)
+		_cells[row * Field::columns + column].changeColor(CellColor::Empty);
+	return true;
+}
+
+void Field::dropRows(int bottomRow)
+{
+	bottomRow = utils::clamp(bottomRow, 0, Field::rows);
+
+	/* Check if bottomRow is empty. If not, return */
+	for (int column = 0; column < Field::columns; column++)
+		if (!_cells[bottomRow * Field::columns + column].empty())
+			return;
+
+	for (int row = bottomRow + 1; row < Field::rows; row++)
+	{
+		bool start = false;
+		for (int column = 0; column < Field::columns; column++)
+		{
+			int idx = row * Field::columns + column;
+			if (!_cells[idx].empty())
+			{
+				start = true;
+				_cells[bottomRow * Field::columns + column].changeColor(_cells[idx].color());
+				_cells[idx].changeColor(CellColor::Empty);
+			}
+		}
+		if (start)
+			bottomRow++;
+	}
+}
+
 
 
 
@@ -469,6 +508,13 @@ void GravityClock::updateFreezing(const sf::Time& delta)
 	else _freezing = sf::Time::Zero;
 }
 
+void GravityClock::updateInserting(const sf::Time& delta)
+{
+	if (_inserting > sf::Time::Zero)
+		_inserting -= delta;
+	else _inserting = sf::Time::Zero;
+}
+
 void GravityClock::registerDrop()
 {
 	switch (_mode)
@@ -617,6 +663,42 @@ void TetrominoManager::generate()
 
 
 
+void ActionRepeatManager::update(const sf::Time& delta)
+{
+	if (_action == ScenarioAction::None)
+		return;
+
+	_delay -= delta;
+	if (_delay < sf::Time::Zero)
+	{
+		_delay = sf::Time::Zero;
+		_speed -= delta;
+		if (_speed < sf::Time::Zero)
+			_speed = sf::Time::Zero;
+	}
+}
+
+void ActionRepeatManager::registerAction(ScenarioAction action)
+{
+	if (action == _action)
+		return;
+
+	_action = action;
+
+	if (action != ScenarioAction::None)
+	{
+		_delay = sf::microseconds(ActionRepeatManager::auto_repeat_delay);
+		_speed = sf::Time::Zero;
+	}
+}
+
+
+
+
+
+
+
+
 Scenario::Scenario() :
 	Frame{
 		{ Scenario::width, Scenario::height },
@@ -626,6 +708,8 @@ Scenario::Scenario() :
 	_nextTetrominos{},
 	_currentTetromino{},
 	_currentTetrominoState{ TetrominoState::None },
+	_bottomRowToErase{ -1 },
+	_horizontalMoveRepeat{},
 	_gravity{},
 	_state{ State::Stopped },
 	_actionQueue{}
@@ -649,7 +733,7 @@ void Scenario::render(sf::RenderTarget& canvas)
 	auto& fcanvas = Frame::canvas();
 
 	_field.render(fcanvas,
-		_currentTetrominoState == TetrominoState::None ? nullptr : &_currentTetromino,
+		_currentTetrominoState == TetrominoState::None || _currentTetrominoState == TetrominoState::Inserting ? nullptr : &_currentTetromino,
 		_currentTetrominoState != TetrominoState::Dropping ? nullptr : &_ghostTetromino
 	);
 	_nextTetrominos.render(fcanvas);
@@ -659,7 +743,7 @@ void Scenario::render(sf::RenderTarget& canvas)
 
 void Scenario::update(const sf::Time& delta)
 {
-	_updateActions();
+	_updateActions(delta);
 	_updateCurrentTetromino(delta);
 }
 
@@ -671,11 +755,19 @@ void Scenario::dispatchEvent(const sf::Event& event)
 		switch (key)
 		{
 			case sf::Keyboard::Left:
-				pushAction(Action::MoveLeft);
+				if (_horizontalMoveRepeat.action() != Action::MoveLeft)
+				{
+					pushAction(Action::MoveLeft);
+					_horizontalMoveRepeat.registerAction(Action::MoveLeft);
+				}
 				break;
 
 			case sf::Keyboard::Right:
-				pushAction(Action::MoveRight);
+				if (_horizontalMoveRepeat.action() != Action::MoveRight)
+				{
+					pushAction(Action::MoveRight);
+					_horizontalMoveRepeat.registerAction(Action::MoveRight);
+				}
 				break;
 
 			case sf::Keyboard::Q:
@@ -700,6 +792,16 @@ void Scenario::dispatchEvent(const sf::Event& event)
 		sf::Keyboard::Key key = event.key.code;
 		switch (key)
 		{
+			case sf::Keyboard::Left:
+				if (_horizontalMoveRepeat.action() == Action::MoveLeft)
+					_horizontalMoveRepeat.releaseAction();
+				break;
+
+			case sf::Keyboard::Right:
+				if (_horizontalMoveRepeat.action() == Action::MoveRight)
+					_horizontalMoveRepeat.releaseAction();
+				break;
+
 			case sf::Keyboard::Up:
 			case sf::Keyboard::Down:
 				pushAction(Action::NormalDrop);
@@ -708,8 +810,18 @@ void Scenario::dispatchEvent(const sf::Event& event)
 	}
 }
 
-void Scenario::_updateActions()
+void Scenario::_updateActions(const sf::Time& delta)
 {
+	_horizontalMoveRepeat.update(delta);
+	if (_horizontalMoveRepeat.isRepeating())
+	{
+		if (!_horizontalMoveRepeat.isWaiting())
+		{
+			_horizontalMoveRepeat.registerRepeat();
+			pushAction(_horizontalMoveRepeat.action());
+		}
+	}
+
 	while (!_actionQueue.empty())
 	{
 		switch (_actionQueue.front())
@@ -768,17 +880,19 @@ void Scenario::_updateCurrentTetromino(const sf::Time& delta)
 			_gravity.updateFreezing(delta);
 			if (!_gravity.isFrozen())
 			{
-				_gravity.freeze();
-				_currentTetrominoState = TetrominoState::Inserting;
+				_insertTetromino();
 			}
 			break;
 
 		case TetrominoState::Inserting:
-			_gravity.updateFreezing(delta);
-			if (!_gravity.isFrozen())
+			_gravity.updateInserting(delta);
+			if (!_gravity.isInserting())
 			{
-				_field.insert(_currentTetromino);
 				_currentTetrominoState = TetrominoState::None;
+
+				if(_bottomRowToErase >= 0 && _bottomRowToErase < Field::rows)
+					_field.dropRows(_bottomRowToErase);
+				_bottomRowToErase = -1;
 			}
 			break;
 
@@ -825,8 +939,7 @@ void Scenario::_dropCurrentTetromino()
 	{
 		if (_gravity.mode() == GravityClock::Mode::Hard)
 		{
-			_currentTetrominoState = TetrominoState::Inserting;
-			_gravity.freeze();
+			_insertTetromino();
 		}
 		else
 		{
@@ -920,4 +1033,34 @@ void Scenario::_generateGhostTetromino()
 
 	if (moveCount > 1)
 		_ghostTetromino.move(-(moveCount - 1), 0);
+}
+
+void Scenario::_insertTetromino()
+{
+	_currentTetrominoState = TetrominoState::Inserting;
+
+	_field.insert(_currentTetromino);
+	if (_eraseCompleteLines())
+		_gravity.erasingInsertion();
+	else _gravity.insertion();
+}
+
+unsigned int Scenario::_eraseCompleteLines()
+{
+	auto cells = _currentTetromino.cellsAsVector();
+	std::set<int> lines;
+	for (const auto& cell : cells)
+		lines.insert(cell.y);
+
+	int erased = 0, bottomLine = Field::rows;
+	for (int line : lines)
+		if (_field.eraseIfComplete(line))
+		{
+			bottomLine = line < bottomLine ? line : bottomLine;
+			erased++;
+		}
+
+	_bottomRowToErase = erased > 0 ? bottomLine : -1;
+	
+	return static_cast<unsigned int>(erased);
 }

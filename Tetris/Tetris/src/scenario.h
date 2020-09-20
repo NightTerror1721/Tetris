@@ -223,6 +223,10 @@ public:
 
 	void insert(const Tetromino& tetromino);
 
+	bool eraseIfComplete(int row);
+
+	void dropRows(int bottomRow);
+
 	inline Cell& cell(int row, int column)
 	{
 		return _cells[utils::clamp(row, 0, rows - 1) * columns + utils::clamp(column, 0, columns - 1)];
@@ -245,6 +249,9 @@ private:
 	static constexpr Int64 min_waiting_time = static_cast<Int64>(0.05 / 60.0 * 1000000.0); // 20G //
 	static constexpr Int64 soft_drop_time = static_cast<Int64>(1.0 / 60.0 * 1000000.0); // 1G //
 	static constexpr Int64 freeze_time = static_cast<Int64>(0.5 * 1000000.0); // 0.5 seconds //
+	static constexpr Int64 insertion_time = static_cast<Int64>(0.5 * 1000000.0); // 0.5 seconds //
+	static constexpr Int64 insertion_with_erase_time = static_cast<Int64>(0.75 * 1000000.0); // 0.75 seconds //
+
 
 public:
 	enum class Mode { Normal, Soft, Hard };
@@ -253,6 +260,7 @@ private:
 	sf::Time _waiting;
 	sf::Time _remaining;
 	sf::Time _freezing;
+	sf::Time _inserting;
 	Mode _mode = Mode::Normal;
 
 public:
@@ -268,6 +276,7 @@ public:
 
 	void updateWaiting(const sf::Time& delta);
 	void updateFreezing(const sf::Time& delta);
+	void updateInserting(const sf::Time& delta);
 
 	void registerDrop();
 
@@ -279,7 +288,10 @@ public:
 	inline Mode mode() const { return _mode; }
 
 	inline void freeze() { _freezing = sf::microseconds(freeze_time); }
+	inline void insertion() { _inserting = sf::microseconds(insertion_time); }
+	inline void erasingInsertion() { _inserting = sf::microseconds(insertion_with_erase_time); }
 	inline void resetFreezing() { _freezing = sf::Time::Zero; }
+	inline void resetInserting() { _inserting = sf::Time::Zero; }
 	inline void reset() { resetMode(), resetWaiting(), resetFreezing(); }
 	
 	inline bool isFrozen() const { return _freezing > sf::Time::Zero; }
@@ -287,6 +299,7 @@ public:
 	{
 		return _mode != Mode::Hard && _remaining > sf::Time::Zero;
 	}
+	inline bool isInserting() const { return _inserting > sf::Time::Zero; }
 };
 
 
@@ -345,6 +358,54 @@ private:
 
 
 
+enum class ScenarioAction
+{
+	None,
+	MoveLeft,
+	MoveRight,
+	RotateLeft,
+	RotateRight,
+	NormalDrop,
+	SoftDrop,
+	HardDrop,
+	Hold
+};
+
+
+
+class ActionRepeatManager
+{
+public:
+	static constexpr Int64 auto_repeat_delay = static_cast<Int64>(170 * 1000); /* 170 milliseconds */
+	static constexpr Int64 auto_repeat_speed = static_cast<Int64>(50 * 1000); /* 50 milliseconds */
+
+private:
+	sf::Time _delay;
+	sf::Time _speed;
+	ScenarioAction _action = ScenarioAction::None;
+
+public:
+	ActionRepeatManager() = default;
+	ActionRepeatManager(const ActionRepeatManager&) = default;
+	ActionRepeatManager(ActionRepeatManager&&) noexcept = default;
+
+	ActionRepeatManager& operator= (const ActionRepeatManager&) = default;
+	ActionRepeatManager& operator= (ActionRepeatManager&&) noexcept = default;
+
+	void update(const sf::Time& delta);
+
+	void registerAction(ScenarioAction action);
+
+	inline void releaseAction() { registerAction(ScenarioAction::None); }
+
+	inline bool isRepeating() const { return _action != ScenarioAction::None && _delay <= sf::Time::Zero; }
+	inline bool isWaiting() const { return _action == ScenarioAction::None || _speed > sf::Time::Zero; }
+	inline void registerRepeat() { _speed += sf::microseconds(auto_repeat_speed); }
+	inline ScenarioAction action() const { return _action; }
+};
+
+
+
 class Scenario : public Frame
 {
 public:
@@ -359,10 +420,11 @@ public:
 
 public:
 	enum class State { Stopped, Running, GameOver };
-	enum class Action { None, MoveLeft, MoveRight, RotateLeft, RotateRight, NormalDrop, SoftDrop, HardDrop, Hold };
+	
 
 private:
 	enum class TetrominoState { None, Dropping, Frozen, Inserting };
+	using Action = ScenarioAction;
 
 private:
 	Field _field;
@@ -372,11 +434,15 @@ private:
 	Tetromino _ghostTetromino;
 	TetrominoState _currentTetrominoState;
 
+	int _bottomRowToErase;
+
+	ActionRepeatManager _horizontalMoveRepeat;
+
 	GravityClock _gravity;
 
 	State _state;
 
-	std::queue<Action> _actionQueue;
+	std::queue<ScenarioAction> _actionQueue;
 
 public:
 	Scenario();
@@ -394,7 +460,7 @@ public:
 
 	inline void setLevel(unsigned int level) { _gravity.setGravityLevel(level); }
 
-	inline void pushAction(Action action) { _actionQueue.push(action); }
+	inline void pushAction(ScenarioAction action) { _actionQueue.push(action); }
 
 public:
 	void render(sf::RenderTarget& canvas);
@@ -404,7 +470,7 @@ public:
 	void dispatchEvent(const sf::Event& event);
 
 private:
-	void _updateActions();
+	void _updateActions(const sf::Time& delta);
 	void _updateCurrentTetromino(const sf::Time& delta);
 
 	void _spawnTetromino();
@@ -415,6 +481,10 @@ private:
 	void _evaluateTetrominoStateAfterAction();
 
 	void _generateGhostTetromino();
+
+	void _insertTetromino();
+
+	unsigned int _eraseCompleteLines();
 
 private:
 	inline void _moveLeftTetromino() { _horizontalMoveTetromino(true); }

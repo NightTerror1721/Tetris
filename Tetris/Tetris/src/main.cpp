@@ -32,10 +32,6 @@ int main(int argc, char** argv)
 
 	Tester& tester = global::game.objects().emplace<Tester>();
 
-	tester.scenario.field().cell(0, 0).changeColor(CellColor::Red);
-	tester.scenario.field().cell(0, 1).changeColor(CellColor::Red);
-	tester.scenario.field().cell(1, 0).changeColor(CellColor::Red);
-
 	tester.scenario.setPosition({
 		(utils::game_canvas_with / 2) - (Scenario::width / 2),
 		(utils::game_canvas_height / 2) - (Scenario::height / 2)
