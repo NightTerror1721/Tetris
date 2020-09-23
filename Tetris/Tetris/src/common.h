@@ -151,6 +151,16 @@ namespace utils
 	{
 		return std::chrono::system_clock::now().time_since_epoch().count();
 	}
+
+
+	template<typename _DstTy, typename _SrcTy>
+	inline sf::Vector2<_DstTy> vector_cast(const sf::Vector2<_SrcTy>& v)
+	{
+		return { static_cast<_DstTy>(v.x), static_cast<_DstTy>(v.y) };
+	}
+
+
+	void centrate_text(sf::Text& text, const Vec2f& position, const Vec2f& size);
 }
 
 namespace utils

@@ -29,6 +29,7 @@ struct Tester : public GameObject
 int main(int argc, char** argv)
 {
 	global::theme.load("default");
+	global::fonts.loadAll();
 
 	Tester& tester = global::game.objects().emplace<Tester>();
 
@@ -48,6 +49,9 @@ int main(int argc, char** argv)
 
 	tester.scenario.holdManager().setPerimeterColor(sf::Color::Blue);
 	tester.scenario.holdManager().setPerimeterThickness(3);
+
+	tester.scenario.score().setPerimeterColor(sf::Color::Blue);
+	tester.scenario.score().setPerimeterThickness(3);
 
 	global::game.videoMode({ 1600, 900 });
 	

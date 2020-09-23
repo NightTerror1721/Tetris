@@ -89,7 +89,6 @@ void GameController::loop()
 
 void GameController::init()
 {
-	global::fonts.loadAll();
 	_fps.init();
 	_fps.enabled(true);
 	resetWindow();

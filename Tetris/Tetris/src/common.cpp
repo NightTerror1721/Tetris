@@ -2,6 +2,20 @@
 
 
 
+namespace utils
+{
+	void centrate_text(sf::Text& text, const Vec2f& position, const Vec2f& size)
+	{
+		auto bounds = text.getLocalBounds();
+		text.setPosition({
+			position.x + (size.x / 2) - (bounds.width / 2),
+			position.y + (size.y / 2) - (bounds.height / 2)
+		});
+	}
+}
+
+
+
 
 namespace utils
 {

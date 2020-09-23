@@ -300,6 +300,8 @@ public:
 	inline void setPosition(const Vec2f& position) { _shape.setPosition(position); }
 	inline void setSize(const Vec2f& size) { _shape.setSize(size); }
 
+	inline Vec2u getCanvasSize() const { return _canvas.getSize(); }
+
 	inline void setPerimeterColor(const sf::Color& color) { _shape.setOutlineColor(color); }
 	inline void setPerimeterThickness(float thickness) { _shape.setOutlineThickness(thickness); }
 

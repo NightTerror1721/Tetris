@@ -3,6 +3,7 @@
 #include "game_basics.h"
 #include "sprites.h"
 #include "theme.h"
+#include "fonts.h"
 
 
 class Cell : private sf::RectangleShape
@@ -106,6 +107,8 @@ constexpr bool operator!= (RotationState left, RotationState right) { return lef
 
 
 
+struct TetrominoView;
+
 class Tetromino
 {
 public:
@@ -149,6 +152,7 @@ public:
 	void render(sf::RenderTarget& canvas) const;
 
 	void build(Type type);
+	void build(const TetrominoView& view);
 
 	void ghostify();
 
@@ -168,7 +172,6 @@ public:
 	CellColor color() const;
 
 public:
-
 	inline void moveDown() { move(-1, 0); }
 	inline void moveLeft() { move(0, -1); }
 	inline void moveRight() { move(0, 1); }
@@ -183,6 +186,35 @@ public:
 
 private:
 	static Vec2i _kickFactors(unsigned int tryId, Type type, RotationState rstate);
+};
+
+
+
+struct TetrominoView
+{
+	static constexpr int cellCount = Tetromino::rows * Tetromino::columns;
+
+	Tetromino::Type type = Tetromino::Type::I;
+	CellColor cells[cellCount] = {};
+
+	TetrominoView() = default;
+	TetrominoView(const TetrominoView&) = default;
+	TetrominoView(TetrominoView&&) noexcept = default;
+	~TetrominoView() = default;
+
+	TetrominoView& operator= (const TetrominoView&) = default;
+	TetrominoView& operator= (TetrominoView&&) noexcept = default;
+
+	void build(Tetromino::Type type);
+
+	void render(sf::RenderTarget& canvas, bool ghost, const Vec2f& position, const Vec2f& size = { static_cast<float>(Tetromino::width), static_cast<float>(Tetromino::height) });
+
+	inline void render(sf::RenderTarget& canvas, bool ghost, float x, float y, float width, float height)
+	{
+		render(canvas, ghost, { x, y }, { width, height });
+	}
+
+	inline TetrominoView(Tetromino::Type type) : TetrominoView() { build(type); }
 };
 
 
@@ -339,7 +371,7 @@ public:
 
 private:
 	TetrominoBag _bag;
-	std::list<Tetromino> _next;
+	std::list<TetrominoView> _next;
 
 public:
 	TetrominoManager();
@@ -367,7 +399,7 @@ public:
 	static constexpr int height = static_cast<int>(Tetromino::height * 0.6);
 
 private:
-	Tetromino _tetromino;
+	TetrominoView _tetromino;
 	bool _empty;
 	bool _lock;
 
@@ -388,7 +420,7 @@ public:
 
 	inline void hold(const Tetromino& tetromino) { hold(tetromino.type()); }
 
-	inline const Tetromino& tetromino() const { return _tetromino; }
+	inline const TetrominoView& tetromino() const { return _tetromino; }
 
 	inline bool isLock() { return _lock; }
 
@@ -446,6 +478,104 @@ public:
 
 
 
+class Score : public Frame
+{
+public:
+	static constexpr int display_height = 48;
+	static constexpr int display_width = display_height * 8;
+
+	static constexpr int width = display_width;
+	static constexpr int height = display_height * 3;
+
+private:
+	UInt64 _points;
+	UInt64 _lines;
+	unsigned int _level;
+
+	sf::Text _tPoints;
+	sf::Text _tLines;
+	sf::Text _tLevel;
+
+	UInt64 _remainingPoints;
+
+	bool _backToBack;
+
+	Font* _font;
+
+public:
+	Score();
+	Score(const Score&) = default;
+	Score(Score&&) noexcept = default;
+	~Score() = default;
+
+	Score& operator= (const Score&) = default;
+	Score& operator= (Score&&) noexcept = default;
+
+	void render(sf::RenderTarget& canvas);
+
+	void update(const sf::Time& delta);
+
+	void addLines(UInt64 amount);
+
+	void increaseLevel();
+
+	inline UInt64 points() const { return _points; }
+	inline UInt64 lines() const { return _lines; }
+	inline unsigned int level() const { return _level; }
+	inline bool hasBackToBack() const { return _backToBack; }
+
+	inline void addSingleScore() { _increasePointsFromBase(100, false); }
+	inline void addDoubleScore() { _increasePointsFromBase(300, false); }
+	inline void addTripleScore() { _increasePointsFromBase(500, false); }
+	inline void addTetrisScore() { _increasePointsFromBase(800, true); }
+
+	inline void addTSpinMiniNoLinesScore() { _increasePointsFromBase(100, false); }
+	inline void addTSpinMiniSingleScore() { _increasePointsFromBase(200, true); }
+	inline void addTSpinMiniDoubleScore() { _increasePointsFromBase(400, true); }
+
+	inline void addTSpinNoLinesScore() { _increasePointsFromBase(400, false); }
+	inline void addTSpinSingleScore() { _increasePointsFromBase(400, true); }
+	inline void addTSpinDoubleScore() { _increasePointsFromBase(1200, true); }
+	inline void addTSpinTripleScore() { _increasePointsFromBase(1600, true); }
+
+	inline void addSoftDropScore() { _increasePoints(1); }
+	inline void addHardDropScore() { _increasePoints(2); }
+
+private:
+	void _increasePoints(UInt64 amount);
+	void _increasePointsFromBase(int base, bool difficult);
+
+	void _updatePointsText();
+	void _updateLinesText();
+	void _updateLevelText();
+};
+
+
+struct TetrominoScenarioInfo
+{
+public:
+	enum class MoveType { Drop, Horizontal, Rotate };
+
+public:
+	MoveType lastMove = MoveType::Drop;
+	Tetromino::Type type = Tetromino::Type::I;
+	RotationState rotation;
+
+	TetrominoScenarioInfo() = default;
+	TetrominoScenarioInfo(const TetrominoScenarioInfo&) = default;
+	TetrominoScenarioInfo(TetrominoScenarioInfo&&) noexcept = default;
+	~TetrominoScenarioInfo() = default;
+
+	TetrominoScenarioInfo& operator= (const TetrominoScenarioInfo&) = default;
+	TetrominoScenarioInfo& operator= (TetrominoScenarioInfo&&) noexcept = default;
+
+	void set(const Tetromino& tetromino, MoveType moveType = MoveType::Drop);
+	//void registerDrop(MoveType type);
+	//void update(MoveType type);
+};
+
+
+
 class Scenario : public Frame
 {
 public:
@@ -453,7 +583,7 @@ public:
 	static constexpr int next_border = 10;
 
 	static constexpr int width = Field::width + TetrominoManager::width + HoldManager::width + (hold_border * 2) + (next_border * 2);
-	static constexpr int height = Field::height + 180;
+	static constexpr int height = Field::height + Score::height;
 
 public:
 	enum class State { Stopped, Running, GameOver };
@@ -461,7 +591,9 @@ public:
 
 private:
 	enum class TetrominoState { None, Dropping, Frozen, Inserting };
+	enum class MoveType { Drop, Horizontal, Rotate };
 	using Action = ScenarioAction;
+	using MoveType = TetrominoScenarioInfo::MoveType;
 
 private:
 	Field _field;
@@ -474,9 +606,13 @@ private:
 
 	int _bottomRowToErase;
 
+	TetrominoScenarioInfo _tetrominoInfo;
+
 	ActionRepeatManager _horizontalMoveRepeat;
 
 	GravityClock _gravity;
+
+	Score _score;
 
 	State _state;
 
@@ -496,6 +632,7 @@ public:
 	inline Field& field() { return _field; }
 	inline TetrominoManager& nextTetrominoManager() { return _nextTetrominos; }
 	inline HoldManager& holdManager() { return _hold; }
+	inline Score& score() { return _score; }
 
 	inline void setLevel(unsigned int level) { _gravity.setGravityLevel(level); }
 

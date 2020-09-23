@@ -197,83 +197,17 @@ void Tetromino::render(sf::RenderTarget& canvas) const
 			_cells[i].render(canvas);
 }
 
-void Tetromino::build(Type type)
-{
-	#define mat(_Row, _Col) matrix[(_Row) * Tetromino::columns + (_Col)]
-	CellColor matrix[Tetromino::cellCount]{
-		CellColor::Empty, CellColor::Empty, CellColor::Empty, CellColor::Empty,
-		CellColor::Empty, CellColor::Empty, CellColor::Empty, CellColor::Empty,
-		CellColor::Empty, CellColor::Empty, CellColor::Empty, CellColor::Empty,
-		CellColor::Empty, CellColor::Empty, CellColor::Empty, CellColor::Empty
-	};
+void Tetromino::build(Type type) { build(TetrominoView{ type }); }
 
+void Tetromino::build(const TetrominoView& view)
+{
 	_validIdx = false;
 	_validVecs = false;
 
-	switch (type)
-	{
-		default:
-		case Type::I:
-			mat(2, 0) = CellColor::Cyan;
-			mat(2, 1) = CellColor::Cyan;
-			mat(2, 2) = CellColor::Cyan;
-			mat(2, 3) = CellColor::Cyan;
-			_type = Type::I;
-			break;
-
-		case Type::O:
-			mat(1, 1) = CellColor::Yellow;
-			mat(1, 2) = CellColor::Yellow;
-			mat(2, 1) = CellColor::Yellow;
-			mat(2, 2) = CellColor::Yellow;
-			_type = type;
-			break;
-
-		case Type::T:
-			mat(1, 0) = CellColor::Purple;
-			mat(1, 1) = CellColor::Purple;
-			mat(1, 2) = CellColor::Purple;
-			mat(2, 1) = CellColor::Purple;
-			_type = type;
-			break;
-
-		case Type::J:
-			mat(1, 0) = CellColor::Blue;
-			mat(1, 1) = CellColor::Blue;
-			mat(1, 2) = CellColor::Blue;
-			mat(2, 0) = CellColor::Blue;
-			_type = type;
-			break;
-
-		case Type::L:
-			mat(1, 0) = CellColor::Orange;
-			mat(1, 1) = CellColor::Orange;
-			mat(1, 2) = CellColor::Orange;
-			mat(2, 2) = CellColor::Orange;
-			_type = type;
-			break;
-
-		case Type::S:
-			mat(1, 0) = CellColor::Green;
-			mat(1, 1) = CellColor::Green;
-			mat(2, 1) = CellColor::Green;
-			mat(2, 2) = CellColor::Green;
-			_type = type;
-			break;
-
-		case Type::Z:
-			mat(1, 1) = CellColor::Red;
-			mat(1, 2) = CellColor::Red;
-			mat(2, 0) = CellColor::Red;
-			mat(2, 1) = CellColor::Red;
-			_type = type;
-			break;
-	}
+	_type = view.type;
 
 	for (int i = 0; i < cellCount; i++)
-		_cells[i].changeColor(matrix[i]);
-
-	#undef mat
+		_cells[i].changeColor(view.cells[i]);
 }
 
 void Tetromino::ghostify()
@@ -485,6 +419,102 @@ Vec2i Tetromino::_kickFactors(unsigned int tryId, Type type, RotationState rstat
 
 
 
+void TetrominoView::build(Tetromino::Type type_)
+{
+	using Type = Tetromino::Type;
+
+	#define mat(_Row, _Col) this->cells[(_Row) * Tetromino::columns + (_Col)]
+	std::memset(cells, 0, sizeof(cells));
+
+	switch (type_)
+	{
+		default:
+		case Type::I:
+			mat(2, 0) = CellColor::Cyan;
+			mat(2, 1) = CellColor::Cyan;
+			mat(2, 2) = CellColor::Cyan;
+			mat(2, 3) = CellColor::Cyan;
+			type = Type::I;
+			break;
+
+		case Type::O:
+			mat(1, 1) = CellColor::Yellow;
+			mat(1, 2) = CellColor::Yellow;
+			mat(2, 1) = CellColor::Yellow;
+			mat(2, 2) = CellColor::Yellow;
+			type = type_;
+			break;
+
+		case Type::T:
+			mat(1, 0) = CellColor::Purple;
+			mat(1, 1) = CellColor::Purple;
+			mat(1, 2) = CellColor::Purple;
+			mat(2, 1) = CellColor::Purple;
+			type = type_;
+			break;
+
+		case Type::J:
+			mat(1, 0) = CellColor::Blue;
+			mat(1, 1) = CellColor::Blue;
+			mat(1, 2) = CellColor::Blue;
+			mat(2, 0) = CellColor::Blue;
+			type = type_;
+			break;
+
+		case Type::L:
+			mat(1, 0) = CellColor::Orange;
+			mat(1, 1) = CellColor::Orange;
+			mat(1, 2) = CellColor::Orange;
+			mat(2, 2) = CellColor::Orange;
+			type = type_;
+			break;
+
+		case Type::S:
+			mat(1, 0) = CellColor::Green;
+			mat(1, 1) = CellColor::Green;
+			mat(2, 1) = CellColor::Green;
+			mat(2, 2) = CellColor::Green;
+			type = type_;
+			break;
+
+		case Type::Z:
+			mat(1, 1) = CellColor::Red;
+			mat(1, 2) = CellColor::Red;
+			mat(2, 0) = CellColor::Red;
+			mat(2, 1) = CellColor::Red;
+			type = type_;
+			break;
+	}
+
+	#undef mat
+}
+
+void TetrominoView::render(sf::RenderTarget& canvas, bool ghost, const Vec2f& position, const Vec2f& size)
+{
+	CellColor last = CellColor::Empty;
+	Vec2f cell_size = { size.x / Tetromino::columns, size.y / Tetromino::rows };
+	sf::RectangleShape shape{ cell_size };
+	shape.setPosition(position);
+
+	for(int row = 0; row < Tetromino::rows; row++)
+		for (int column = 0; column < Tetromino::columns; column++)
+		{
+			shape.setPosition(position.x + (cell_size.x * column), position.y + (cell_size.y * (Tetromino::rows - row - 1)));
+
+			CellColor color = cells[row * Tetromino::columns + column];
+			if (color != last)
+				shape.setTexture(color == CellColor::Empty ? nullptr : ghost ? global::theme.ghostColorTexture(color) : global::theme.cellColorTexture(color));
+
+			if (color != CellColor::Empty)
+				canvas.draw(shape);
+		}
+}
+
+
+
+
+
+
 
 void GravityClock::setGravityLevel(unsigned int level)
 {
@@ -630,8 +660,12 @@ Tetromino TetrominoManager::next()
 {
 	generate();
 
-	Tetromino next = _next.front();
+	TetrominoView next_view = _next.front();
 	_next.pop_front();
+
+	Tetromino next;
+	next.setPosition(0, 0);
+	next.build(next_view);
 
 	return next;
 }
@@ -640,22 +674,21 @@ void TetrominoManager::render(sf::RenderTarget& canvas)
 {
 	clearCanvas();
 
+	Vec2f pos;
+	Vec2f size = { static_cast<float>(Tetromino::width), static_cast<float>(Tetromino::height) };
+
 	for (auto& t : _next)
-		t.render(Frame::canvas());
+	{
+		t.render(Frame::canvas(), false, pos, size);
+		pos.y += Tetromino::height;
+	}
 
 	renderCanvas(canvas);
 }
 
 void TetrominoManager::generate()
 {
-	for (auto& t : _next)
-		t.move(Tetromino::rows, 0);
-
-	_next.emplace_back();
-
-	Tetromino& t = _next.back();
-	t.setPosition(0, 0);
-	t.build(_bag.take());
+	_next.emplace_back(_bag.take());
 }
 
 
@@ -679,7 +712,7 @@ void HoldManager::render(sf::RenderTarget& canvas)
 	clearCanvas();
 
 	if (!_empty)
-		_tetromino.render(Frame::canvas());
+		_tetromino.render(Frame::canvas(), false, {});
 
 	renderCanvas(canvas);
 }
@@ -688,7 +721,6 @@ void HoldManager::hold(Tetromino::Type type)
 {
 	if (_empty || !_lock)
 	{
-		_tetromino.setPosition(Field::rows - 6, 0);
 		_tetromino.build(type);
 		_lock = !_empty;
 		_empty = false;
@@ -737,6 +769,131 @@ void ActionRepeatManager::registerAction(ScenarioAction action)
 
 
 
+Score::Score() :
+	Frame{
+		{ static_cast<unsigned int>(Score::width), static_cast<unsigned int>(Score::height) },
+		{ static_cast<float>(Score::width), static_cast<float>(Score::height) }
+	},
+	_points{ 0 },
+	_lines{ 0 },
+	_level{ 1 },
+	_tPoints{},
+	_tLines{},
+	_tLevel{},
+	_remainingPoints{ 0 },
+	_backToBack{ false },
+	_font{ &global::fonts.get("arial") }
+{
+	_tPoints.setFont(*_font);
+	_tLines.setFont(*_font);
+	_tLevel.setFont(*_font);
+
+	_updatePointsText();
+	_updateLinesText();
+	_updateLevelText();
+}
+
+void Score::_updatePointsText()
+{
+	_tPoints.setString(std::to_string(_points));
+	_tPoints.setFillColor(sf::Color::White);
+	utils::centrate_text(_tPoints, {}, { static_cast<float>(Score::display_width), static_cast<float>(Score::display_height) });
+}
+
+void Score::_updateLinesText()
+{
+	_tLines.setString(std::to_string(_lines));
+	_tLines.setFillColor(sf::Color::White);
+	utils::centrate_text(_tLines,
+		{ 0, static_cast<float>(Score::display_height) },
+		{ static_cast<float>(Score::display_width), static_cast<float>(Score::display_height) }
+	);
+}
+
+void Score::_updateLevelText()
+{
+	_tLevel.setString(std::to_string(_level));
+	_tLevel.setFillColor(sf::Color::White);
+	utils::centrate_text(_tLevel,
+		{ 0, static_cast<float>(Score::display_height * 2) },
+		{ static_cast<float>(Score::display_width), static_cast<float>(Score::display_height) }
+	);
+}
+
+void Score::render(sf::RenderTarget& canvas)
+{
+	clearCanvas();
+
+	Frame::draw(_tPoints);
+	Frame::draw(_tLines);
+	Frame::draw(_tLevel);
+
+	renderCanvas(canvas);
+}
+
+void Score::update(const sf::Time& delta)
+{
+	if (_remainingPoints > 0)
+	{
+		UInt64 speed = std::max(_remainingPoints * 5, 250ULL);
+		UInt64 part = static_cast<UInt64>(static_cast<double>(delta.asSeconds()) * speed);
+		if (part > _remainingPoints)
+			part = _remainingPoints;
+
+		_remainingPoints -= part;
+		_points += part;
+
+		_updatePointsText();
+	}
+}
+
+void Score::addLines(UInt64 amount)
+{
+	_lines += amount;
+	_updateLinesText();
+}
+
+void Score::increaseLevel()
+{
+	_level++;
+	_updateLevelText();
+}
+
+void Score::_increasePoints(UInt64 amount)
+{
+	_remainingPoints += amount;
+}
+
+void Score::_increasePointsFromBase(int base, bool difficult)
+{
+	if (difficult && _backToBack)
+		base = base * 3 / 2;
+
+	_backToBack = difficult;
+
+	UInt64 amount = static_cast<UInt64>(static_cast<unsigned int>(base) * _level);
+	_remainingPoints += amount;
+}
+
+
+
+
+
+
+
+void TetrominoScenarioInfo::set(const Tetromino& tetromino, MoveType moveType)
+{
+	lastMove = moveType;
+	type = tetromino.type();
+	rotation = tetromino.rotationState();
+}
+
+
+
+
+
+
+
 
 Scenario::Scenario() :
 	Frame{
@@ -749,14 +906,16 @@ Scenario::Scenario() :
 	_currentTetromino{},
 	_currentTetrominoState{ TetrominoState::None },
 	_bottomRowToErase{ -1 },
+	_tetrominoInfo{},
 	_horizontalMoveRepeat{},
 	_gravity{},
+	_score{},
 	_state{ State::Stopped },
 	_actionQueue{}
 {
 	_field.setPosition({
 		static_cast<float>((Scenario::width / 2) - (Field::width / 2)),
-		static_cast<float>((Scenario::height / 2) - (Field::height / 2))
+		static_cast<float>(Score::height)
 	});
 
 	_nextTetrominos.setPosition({
@@ -768,6 +927,11 @@ Scenario::Scenario() :
 		static_cast<float>(Scenario::hold_border),
 		static_cast<float>(_field.getPosition().y)
 	});
+
+	_score.setPosition({
+		static_cast<float>((Scenario::width / 2) - (Score::width / 2)),
+		static_cast<float>(0)
+		});
 
 	_gravity.setGravityLevel(1);
 }
@@ -783,6 +947,7 @@ void Scenario::render(sf::RenderTarget& canvas)
 	);
 	_nextTetrominos.render(fcanvas);
 	_hold.render(fcanvas);
+	_score.render(fcanvas);
 
 	renderCanvas(canvas);
 }
@@ -791,6 +956,7 @@ void Scenario::update(const sf::Time& delta)
 {
 	_updateActions(delta);
 	_updateCurrentTetromino(delta);
+	_score.update(delta);
 }
 
 void Scenario::dispatchEvent(const sf::Event& event)
@@ -958,7 +1124,7 @@ void Scenario::_updateCurrentTetromino(const sf::Time& delta)
 void Scenario::_spawnTetromino(bool useHold)
 {
 	if (useHold)
-		_currentTetromino = _hold.tetromino();
+		_currentTetromino.build(_hold.tetromino());
 	else _currentTetromino = _nextTetrominos.next();
 
 	/* Try to situate into origin */
@@ -981,6 +1147,7 @@ void Scenario::_spawnTetromino(bool useHold)
 	}
 
 	_gravity.reset();
+	_tetrominoInfo.set(_currentTetromino);
 	_currentTetrominoState = TetrominoState::Dropping;
 	_generateGhostTetromino();
 }
@@ -1005,6 +1172,13 @@ void Scenario::_dropCurrentTetromino()
 	}
 
 	_currentTetromino.moveDown();
+
+	_tetrominoInfo.lastMove = MoveType::Drop;
+
+	if (_gravity.mode() == GravityClock::Mode::Soft)
+		_score.addSoftDropScore();
+	else if (_gravity.mode() == GravityClock::Mode::Hard)
+		_score.addHardDropScore();
 }
 
 void Scenario::_horizontalMoveTetromino(bool left)
@@ -1026,6 +1200,8 @@ void Scenario::_horizontalMoveTetromino(bool left)
 		if (!_field.collide(tryer) && !_field.isRightOut(tryer))
 			_currentTetromino.moveRight();
 	}
+
+	_tetrominoInfo.lastMove = MoveType::Horizontal;
 
 	_evaluateTetrominoStateAfterAction();
 }
@@ -1052,6 +1228,9 @@ void Scenario::_rotateCurrentTetromino(bool left)
 			break;
 		}
 	}
+
+	_tetrominoInfo.lastMove = MoveType::Rotate;
+	_tetrominoInfo.rotation = _currentTetromino.rotationState();
 
 	_evaluateTetrominoStateAfterAction();
 }
@@ -1134,6 +1313,19 @@ unsigned int Scenario::_eraseCompleteLines()
 		}
 
 	_bottomRowToErase = erased > 0 ? bottomLine : -1;
+
+	_score.addLines(static_cast<UInt64>(erased));
+	if (erased > 0)
+	{
+		switch (erased)
+		{
+			case 1: _score.addSingleScore(); break;
+			case 2: _score.addDoubleScore(); break;
+			case 3: _score.addTripleScore(); break;
+			case 4:
+			default: _score.addTetrisScore(); break;
+		}
+	}
 	
 	return static_cast<unsigned int>(erased);
 }
