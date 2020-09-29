@@ -1,0 +1,8 @@
+{
+    "Tetris99": {
+        "file": "bgm_tetris99.ogg",
+        "loop": false,
+        "start_offset": 0,
+        "end_offset": 0
+    }
+}

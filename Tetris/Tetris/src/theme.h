@@ -2,6 +2,7 @@
 
 #include "game_basics.h"
 #include "sprites.h"
+#include "audio.h"
 
 
 enum class CellColor
@@ -31,6 +32,14 @@ namespace utils
 class Theme
 {
 private:
+	struct MusicData
+	{
+		bool custom;
+		String name;
+		MusicInfo info;
+	};
+
+private:
 	TextureManager _textures = global::textures.createChild(resource::themes);
 
 	String _folderName;
@@ -38,6 +47,8 @@ private:
 
 	Texture* _cellColors[utils::cell_color_count - 1] = {};
 	Texture* _ghostColors[utils::cell_color_count - 1] = {};
+
+	MusicData _scenarioMusic;
 
 public:
 	Theme() = default;
@@ -48,11 +59,14 @@ public:
 	Theme& operator= (const Theme&) = delete;
 	Theme& operator= (Theme&&) noexcept = delete;
 
+	Music& loadScenarioMusic(Music& music);
+
 	inline const Texture* cellColorTexture(CellColor cell) { return cell == CellColor::Empty ? nullptr : _cellColors[utils::cellcolor_id(cell) - 1]; }
 	inline const Texture* ghostColorTexture(CellColor cell) { return cell == CellColor::Empty ? nullptr : _ghostColors[utils::cellcolor_id(cell) - 1]; }
 
 private:
 	Path _getPath(const String& filename);
+	resource::Folder _getFolder() const;
 	Texture& _loadTexture(const TextureInfo& textureInfo, const String& name);
 
 	Json _loadJson(const String& name) const;
@@ -60,6 +74,8 @@ private:
 
 	void _loadCellColors(const Json& json, bool ghost);
 	void _loadCellColors(const Json& json, bool ghost, const std::vector<std::pair<const char*, Offset>>& ids);
+
+	void _loadScenarioMusic(const Json& json);
 
 public:
 	inline void load(const String& name) { _load(name, _loadJson(name)); }

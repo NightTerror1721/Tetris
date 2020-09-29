@@ -314,3 +314,17 @@ protected:
 	inline void draw(const sf::Drawable& drawable) { _canvas.draw(drawable); }
 	inline sf::RenderTarget& canvas() { return _canvas; }
 };
+
+
+typedef sf::Keyboard::Key KeyboardKey;
+
+namespace default_control
+{
+	constexpr KeyboardKey move_left = KeyboardKey::Left;
+	constexpr KeyboardKey move_right = KeyboardKey::Right;
+	constexpr KeyboardKey softdrop = KeyboardKey::Down;
+	constexpr KeyboardKey harddrop = KeyboardKey::Space;
+	constexpr KeyboardKey rotate_left = KeyboardKey::Z;
+	constexpr KeyboardKey rotate_right = KeyboardKey::Up;
+	constexpr KeyboardKey hold = KeyboardKey::C;
+}

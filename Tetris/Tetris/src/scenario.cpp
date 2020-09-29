@@ -185,6 +185,29 @@ void Field::dropRows(int bottomRow)
 	}
 }
 
+unsigned int Field::TSlotCorners(const Tetromino& tetromino)
+{
+	#define check_corner(_Row, _Column, _Corner) \
+	if((_Row) >= 0 && (_Row) < Field::rows && (_Column) >= 0 && (_Column) < Field::columns && \
+			_cells[(_Row) * Field::columns + (_Column)]) ++(_Corner)
+
+	if (tetromino.type() != Tetromino::Type::T)
+		return 0;
+
+	int row = tetromino.row();
+	int column = tetromino.column();
+	unsigned int corners = 0;
+
+	check_corner(row, column, corners);
+	check_corner(row, column + 2, corners);
+	check_corner(row + 2, column, corners);
+	check_corner(row + 2, column + 2, corners);
+
+	return corners;
+
+	#undef check_corner
+}
+
 
 
 
@@ -795,14 +818,14 @@ Score::Score() :
 
 void Score::_updatePointsText()
 {
-	_tPoints.setString(std::to_string(_points));
+	_tPoints.setString("score: " + std::to_string(_points));
 	_tPoints.setFillColor(sf::Color::White);
 	utils::centrate_text(_tPoints, {}, { static_cast<float>(Score::display_width), static_cast<float>(Score::display_height) });
 }
 
 void Score::_updateLinesText()
 {
-	_tLines.setString(std::to_string(_lines));
+	_tLines.setString("lines: " + std::to_string(_lines));
 	_tLines.setFillColor(sf::Color::White);
 	utils::centrate_text(_tLines,
 		{ 0, static_cast<float>(Score::display_height) },
@@ -812,7 +835,7 @@ void Score::_updateLinesText()
 
 void Score::_updateLevelText()
 {
-	_tLevel.setString(std::to_string(_level));
+	_tLevel.setString("level: " + std::to_string(_level));
 	_tLevel.setFillColor(sf::Color::White);
 	utils::centrate_text(_tLevel,
 		{ 0, static_cast<float>(Score::display_height * 2) },
@@ -853,9 +876,9 @@ void Score::addLines(UInt64 amount)
 	_updateLinesText();
 }
 
-void Score::increaseLevel()
+void Score::setLevel(unsigned int level)
 {
-	_level++;
+	_level = level < 1 ? 1 : level;
 	_updateLevelText();
 }
 
@@ -871,7 +894,7 @@ void Score::_increasePointsFromBase(int base, bool difficult)
 
 	_backToBack = difficult;
 
-	UInt64 amount = static_cast<UInt64>(static_cast<unsigned int>(base) * _level);
+	UInt64 amount = static_cast<UInt64>(base) * static_cast<UInt64>(_level);
 	_remainingPoints += amount;
 }
 
@@ -886,6 +909,24 @@ void TetrominoScenarioInfo::set(const Tetromino& tetromino, MoveType moveType)
 	lastMove = moveType;
 	type = tetromino.type();
 	rotation = tetromino.rotationState();
+	kicks = 0;
+}
+
+void TetrominoScenarioInfo::registerDrop()
+{
+	lastMove = MoveType::Drop;
+	kicks = 0;
+}
+void TetrominoScenarioInfo::registerHorizontal()
+{
+	lastMove = MoveType::Horizontal;
+	kicks = 0;
+}
+void TetrominoScenarioInfo::registerRotate(RotationState rotation, unsigned int kicks)
+{
+	lastMove = MoveType::Rotate;
+	this->rotation = rotation;
+	this->kicks = kicks;
 }
 
 
@@ -906,11 +947,18 @@ Scenario::Scenario() :
 	_currentTetromino{},
 	_currentTetrominoState{ TetrominoState::None },
 	_bottomRowToErase{ -1 },
+	_linesPerLevel{ 10 },
+	_currentLevel{ 1 },
 	_tetrominoInfo{},
 	_horizontalMoveRepeat{},
 	_gravity{},
 	_score{},
-	_state{ State::Stopped },
+	_state{ State::Running },
+	_pauseButton{ false },
+	_pause{ PauseState::None },
+	_pauseCountdown{},
+	_pauseText{},
+	_sounds{},
 	_actionQueue{}
 {
 	_field.setPosition({
@@ -934,6 +982,10 @@ Scenario::Scenario() :
 		});
 
 	_gravity.setGravityLevel(1);
+
+	_pauseText.setCharacterSize(60);
+	_pauseText.setFillColor(sf::Color::White);
+	_pauseText.setFont(global::fonts.get("arial"));
 }
 
 void Scenario::render(sf::RenderTarget& canvas)
@@ -949,24 +1001,56 @@ void Scenario::render(sf::RenderTarget& canvas)
 	_hold.render(fcanvas);
 	_score.render(fcanvas);
 
+	if (_pause != PauseState::None)
+		fcanvas.draw(_pauseText);
+
 	renderCanvas(canvas);
 }
 
 void Scenario::update(const sf::Time& delta)
 {
-	_updateActions(delta);
-	_updateCurrentTetromino(delta);
-	_score.update(delta);
+	if (_state == State::Running)
+	{
+		if (_pause == PauseState::Resuming)
+		{
+			_pauseCountdown -= delta;
+			if (_pauseCountdown <= sf::Time::Zero)
+				_pause = PauseState::None;
+			else
+			{
+				int secs = static_cast<int>(_pauseCountdown.asSeconds() + 1);
+				secs = utils::clamp(secs, 0, 3);
+				_pauseText.setString(std::to_string(secs));
+				utils::centrate_text(_pauseText, {}, getSize());
+
+				_clearActionsQueue();
+
+				goto sound_part;
+			}
+		}
+		else if (_pause == PauseState::Paused)
+		{
+			_clearActionsQueue();
+			goto sound_part;
+		}
+
+		_updateActions(delta);
+		_updateCurrentTetromino(delta);
+		_score.update(delta);
+
+		sound_part:
+		_sounds.update();
+	}
 }
 
 void Scenario::dispatchEvent(const sf::Event& event)
 {
 	if (event.type == sf::Event::KeyPressed)
 	{
-		sf::Keyboard::Key key = event.key.code;
+		KeyboardKey key = event.key.code;
 		switch (key)
 		{
-			case sf::Keyboard::Left:
+			case default_control::move_left:
 				if (_horizontalMoveRepeat.action() != Action::MoveLeft)
 				{
 					pushAction(Action::MoveLeft);
@@ -974,7 +1058,7 @@ void Scenario::dispatchEvent(const sf::Event& event)
 				}
 				break;
 
-			case sf::Keyboard::Right:
+			case default_control::move_right:
 				if (_horizontalMoveRepeat.action() != Action::MoveRight)
 				{
 					pushAction(Action::MoveRight);
@@ -982,24 +1066,28 @@ void Scenario::dispatchEvent(const sf::Event& event)
 				}
 				break;
 
-			case sf::Keyboard::Q:
+			case default_control::rotate_left:
 				pushAction(Action::RotateLeft);
 				break;
 
-			case sf::Keyboard::E:
+			case default_control::rotate_right:
 				pushAction(Action::RotateRight);
 				break;
 
-			case sf::Keyboard::Up:
+			case default_control::harddrop:
 				pushAction(Action::HardDrop);
 				break;
 
-			case sf::Keyboard::Down:
+			case default_control::softdrop:
 				pushAction(Action::SoftDrop);
 				break;
 
-			case sf::Keyboard::Tab:
+			case default_control::hold:
 				pushAction(Action::Hold);
+				break;
+
+			case sf::Keyboard::Escape:
+				_setPause(_pause != PauseState::Paused);
 				break;
 		}
 	}
@@ -1008,20 +1096,23 @@ void Scenario::dispatchEvent(const sf::Event& event)
 		sf::Keyboard::Key key = event.key.code;
 		switch (key)
 		{
-			case sf::Keyboard::Left:
+			case default_control::move_left:
 				if (_horizontalMoveRepeat.action() == Action::MoveLeft)
 					_horizontalMoveRepeat.releaseAction();
 				break;
 
-			case sf::Keyboard::Right:
+			case default_control::move_right:
 				if (_horizontalMoveRepeat.action() == Action::MoveRight)
 					_horizontalMoveRepeat.releaseAction();
 				break;
 
-			case sf::Keyboard::Up:
-			case sf::Keyboard::Down:
+			case default_control::softdrop:
+			case default_control::harddrop:
 				pushAction(Action::NormalDrop);
 				break;
+
+			case sf::Keyboard::Escape:
+				_pauseButton = false;
 		}
 	}
 }
@@ -1107,9 +1198,14 @@ void Scenario::_updateCurrentTetromino(const sf::Time& delta)
 			{
 				_currentTetrominoState = TetrominoState::None;
 
-				if(_bottomRowToErase >= 0 && _bottomRowToErase < Field::rows)
+				if (_bottomRowToErase >= 0 && _bottomRowToErase < Field::rows)
+				{
 					_field.dropRows(_bottomRowToErase);
+					_playSound(sound_id::drop_after_clear);
+				}
 				_bottomRowToErase = -1;
+
+				_checkLevel();
 
 				_hold.unlock();
 			}
@@ -1162,6 +1258,7 @@ void Scenario::_dropCurrentTetromino()
 		if (_gravity.mode() == GravityClock::Mode::Hard)
 		{
 			_insertTetromino();
+			_playSound(sound_id::tetrimino_harddrop);
 		}
 		else
 		{
@@ -1173,10 +1270,13 @@ void Scenario::_dropCurrentTetromino()
 
 	_currentTetromino.moveDown();
 
-	_tetrominoInfo.lastMove = MoveType::Drop;
+	_tetrominoInfo.registerDrop();
 
 	if (_gravity.mode() == GravityClock::Mode::Soft)
+	{
 		_score.addSoftDropScore();
+		_playSound(sound_id::tetrimino_softdrop);
+	}
 	else if (_gravity.mode() == GravityClock::Mode::Hard)
 		_score.addHardDropScore();
 }
@@ -1192,16 +1292,22 @@ void Scenario::_horizontalMoveTetromino(bool left)
 	{
 		tryer.moveLeft();
 		if (!_field.collide(tryer) && !_field.isLeftOut(tryer))
+		{
 			_currentTetromino.moveLeft();
+			_playSound(sound_id::tetrimino_move);
+		}
 	}
 	else
 	{
 		tryer.moveRight();
 		if (!_field.collide(tryer) && !_field.isRightOut(tryer))
+		{
 			_currentTetromino.moveRight();
+			_playSound(sound_id::tetrimino_move);
+		}
 	}
 
-	_tetrominoInfo.lastMove = MoveType::Horizontal;
+	_tetrominoInfo.registerHorizontal();
 
 	_evaluateTetrominoStateAfterAction();
 }
@@ -1218,19 +1324,20 @@ void Scenario::_rotateCurrentTetromino(bool left)
 		tryer.leftRotate();
 	else tryer.rightRotate();
 
-	for (unsigned int i = 0; i < static_cast<unsigned int>(Tetromino::max_rotation_try); i++)
+	unsigned int kickId = 0;
+	for (; kickId < static_cast<unsigned int>(Tetromino::max_rotation_try); kickId++)
 	{
 		Tetromino tkick = tryer;
-		tkick.kick(oldState, i);
+		tkick.kick(oldState, kickId);
 		if (!_field.collide(tkick) && _field.isInside(tkick))
 		{
 			_currentTetromino = std::move(tkick);
+			_playSound(sound_id::tetrimino_rotate);
 			break;
 		}
 	}
 
-	_tetrominoInfo.lastMove = MoveType::Rotate;
-	_tetrominoInfo.rotation = _currentTetromino.rotationState();
+	_tetrominoInfo.registerRotate(_currentTetromino.rotationState(), kickId);
 
 	_evaluateTetrominoStateAfterAction();
 }
@@ -1251,6 +1358,8 @@ void Scenario::_holdTetromino()
 		_spawnTetromino(true);
 		_hold.hold(type);
 	}
+
+	_playSound(sound_id::tetrimino_hold);
 }
 
 void Scenario::_evaluateTetrominoStateAfterAction()
@@ -1294,7 +1403,11 @@ void Scenario::_insertTetromino()
 	_field.insert(_currentTetromino);
 	if (_eraseCompleteLines())
 		_gravity.erasingInsertion();
-	else _gravity.insertion();
+	else
+	{
+		_gravity.insertion();
+		_playSound(sound_id::tetrimino_hit);
+	}
 }
 
 unsigned int Scenario::_eraseCompleteLines()
@@ -1315,17 +1428,93 @@ unsigned int Scenario::_eraseCompleteLines()
 	_bottomRowToErase = erased > 0 ? bottomLine : -1;
 
 	_score.addLines(static_cast<UInt64>(erased));
-	if (erased > 0)
+
+	if (_tetrominoInfo.type == Tetromino::Type::T &&
+		_tetrominoInfo.lastMove == TetrominoScenarioInfo::MoveType::Rotate &&
+		_field.TSlotCorners(_currentTetromino) > 2)
+	{
+		erased = erased < 0 ? 0 : erased;
+
+		if (_tetrominoInfo.kicks > 0 && _tetrominoInfo.kicks < 3)
+		{
+			switch (erased)
+			{
+				case 0: _score.addTSpinMiniNoLinesScore(); break;
+				case 1: _score.addTSpinMiniSingleScore(), _playSound(sound_id::single_line); break;
+				case 2: _score.addTSpinMiniDoubleScore(), _playSound(sound_id::double_line); break;
+				case 3:
+				default: _score.addTSpinTripleScore(), _playSound(sound_id::triple_line); break;
+			}
+			_playSound(sound_id::special_clear);
+		}
+		else
+		{
+			switch (erased)
+			{
+				case 0: _score.addTSpinNoLinesScore(); break;
+				case 1: _score.addTSpinSingleScore(), _playSound(sound_id::single_line); break;
+				case 2: _score.addTSpinDoubleScore(), _playSound(sound_id::double_line); break;
+				case 3:
+				default: _score.addTSpinTripleScore(), _playSound(sound_id::triple_line); break;
+			}
+		}
+	}
+	else if (erased > 0)
 	{
 		switch (erased)
 		{
-			case 1: _score.addSingleScore(); break;
-			case 2: _score.addDoubleScore(); break;
-			case 3: _score.addTripleScore(); break;
+			case 1: _score.addSingleScore(), _playSound(sound_id::single_line); break;
+			case 2: _score.addDoubleScore(), _playSound(sound_id::double_line); break;
+			case 3: _score.addTripleScore(), _playSound(sound_id::triple_line); break;
 			case 4:
-			default: _score.addTetrisScore(); break;
+			default: _score.addTetrisScore(), _playSound(sound_id::tetris_line); break;
 		}
 	}
 	
 	return static_cast<unsigned int>(erased);
+}
+
+void Scenario::_checkLevel()
+{
+	unsigned int level = (static_cast<unsigned int>(_score.lines() / static_cast<UInt64>(_linesPerLevel)) + 1);
+	if (level != _currentLevel)
+	{
+		_currentLevel = level;
+		_gravity.setGravityLevel(level);
+		_score.setLevel(level);
+	}
+}
+
+void Scenario::_setPause(bool paused)
+{
+	if (_pauseButton)
+		return;
+
+	_pauseButton = true;
+
+	if (paused)
+	{
+		if (_pause == PauseState::Paused)
+			return;
+
+		_pause = PauseState::Paused;
+		_pauseText.setString("PAUSED");
+		utils::centrate_text(_pauseText, {}, getSize());
+	}
+	else
+	{
+		if (_pause != PauseState::Paused)
+			return;
+
+		_pause = PauseState::Resuming;
+		_pauseCountdown = sf::seconds(3);
+		_pauseText.setString("3");
+		utils::centrate_text(_pauseText, {}, getSize());
+	}
+}
+
+void Scenario::_clearActionsQueue()
+{
+	while (!_actionQueue.empty())
+		_actionQueue.pop();
 }

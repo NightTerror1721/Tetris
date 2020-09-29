@@ -4,6 +4,7 @@
 #include "sprites.h"
 #include "theme.h"
 #include "fonts.h"
+#include "audio.h"
 
 
 class Cell : private sf::RectangleShape
@@ -261,6 +262,8 @@ public:
 
 	void dropRows(int bottomRow);
 
+	unsigned int TSlotCorners(const Tetromino& tetromino);
+
 	inline Cell& cell(int row, int column)
 	{
 		return _cells[utils::clamp(row, 0, rows - 1) * columns + utils::clamp(column, 0, columns - 1)];
@@ -517,7 +520,7 @@ public:
 
 	void addLines(UInt64 amount);
 
-	void increaseLevel();
+	void setLevel(unsigned int level);
 
 	inline UInt64 points() const { return _points; }
 	inline UInt64 lines() const { return _lines; }
@@ -560,6 +563,7 @@ public:
 	MoveType lastMove = MoveType::Drop;
 	Tetromino::Type type = Tetromino::Type::I;
 	RotationState rotation;
+	unsigned int kicks = 0;
 
 	TetrominoScenarioInfo() = default;
 	TetrominoScenarioInfo(const TetrominoScenarioInfo&) = default;
@@ -570,8 +574,9 @@ public:
 	TetrominoScenarioInfo& operator= (TetrominoScenarioInfo&&) noexcept = default;
 
 	void set(const Tetromino& tetromino, MoveType moveType = MoveType::Drop);
-	//void registerDrop(MoveType type);
-	//void update(MoveType type);
+	void registerDrop();
+	void registerHorizontal();
+	void registerRotate(RotationState rotation, unsigned int kicks);
 };
 
 
@@ -586,14 +591,14 @@ public:
 	static constexpr int height = Field::height + Score::height;
 
 public:
-	enum class State { Stopped, Running, GameOver };
+	enum class State { Running, GameOver };
 	
 
 private:
 	enum class TetrominoState { None, Dropping, Frozen, Inserting };
 	enum class MoveType { Drop, Horizontal, Rotate };
+	enum class PauseState { None, Paused, Resuming };
 	using Action = ScenarioAction;
-	using MoveType = TetrominoScenarioInfo::MoveType;
 
 private:
 	Field _field;
@@ -606,6 +611,9 @@ private:
 
 	int _bottomRowToErase;
 
+	unsigned int _linesPerLevel;
+	unsigned int _currentLevel;
+
 	TetrominoScenarioInfo _tetrominoInfo;
 
 	ActionRepeatManager _horizontalMoveRepeat;
@@ -615,6 +623,13 @@ private:
 	Score _score;
 
 	State _state;
+
+	bool _pauseButton;
+	PauseState _pause;
+	sf::Text _pauseText;
+	sf::Time _pauseCountdown;
+
+	SoundController _sounds;
 
 	std::queue<ScenarioAction> _actionQueue;
 
@@ -663,10 +678,18 @@ private:
 
 	unsigned int _eraseCompleteLines();
 
+	void _checkLevel();
+
+	void _setPause(bool paused);
+
+	void _clearActionsQueue();
+
 private:
 	inline void _moveLeftTetromino() { _horizontalMoveTetromino(true); }
 	inline void _moveRightTetromino() { _horizontalMoveTetromino(false); }
 
 	inline void _rotateLeftCurrentTetromino() { _rotateCurrentTetromino(true); }
 	inline void _rotateRightCurrentTetromino() { _rotateCurrentTetromino(false); }
+
+	inline void _playSound(const char* sound) { _sounds.play(sound); }
 };

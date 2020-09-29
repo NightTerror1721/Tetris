@@ -3,9 +3,31 @@
 
 Theme global::theme;
 
+Music& Theme::loadScenarioMusic(Music& music)
+{
+	if (_scenarioMusic.custom)
+	{
+		musics::load(music, _scenarioMusic.info, _getFolder());
+	}
+	else
+	{
+		if(!_scenarioMusic.name.empty())
+			global::musics::load(music, _scenarioMusic.name);
+	}
+
+	return music;
+}
+
+
+
 Path Theme::_getPath(const String& filename)
 {
 	return Path{ _folderName } / filename;
+}
+
+resource::Folder Theme::_getFolder() const
+{
+	return resource::themes.folder(_folderName);
 }
 
 Texture& Theme::_loadTexture(const TextureInfo& textureInfo, const String& name)
@@ -26,6 +48,8 @@ void Theme::_load(const String& name, const Json& json)
 
 	_loadCellColors(json, false);
 	_loadCellColors(json, true);
+
+	_loadScenarioMusic(json);
 }
 
 Json Theme::_loadJson(const String& name) const
@@ -70,5 +94,28 @@ void Theme::_loadCellColors(const Json& json, bool ghost, const std::vector<std:
 			continue;
 
 		colors[id.second] = &_loadTexture(TextureInfo::read(json[id.first]), name_prefix + id.first);
+	}
+}
+
+void Theme::_loadScenarioMusic(const Json& json)
+{
+	if (!utils::has(json, "music"))
+		return;
+
+	const Json& base = json["music"];
+	if (!base.is_object())
+		return;
+
+	utils::destroy(_scenarioMusic);
+	utils::construct(_scenarioMusic);
+
+	_scenarioMusic.custom = utils::opt<bool>(base, "custom", false);
+	if (_scenarioMusic.custom)
+	{
+		_scenarioMusic.info = musics::readInfo(base);
+	}
+	else
+	{
+		_scenarioMusic.name = utils::opt<String>(base, "name", "");
 	}
 }

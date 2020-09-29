@@ -383,8 +383,10 @@ namespace resource
 {
 	static const Folder root = "data"_p;
 	static const Folder textures = { root, "textures"_p };
-	static const Folder themes = { textures, "themes"_p };
+	static const Folder themes = { root, "themes"_p };
 	static const Folder font = { root, "font"_p };
+	static const Folder music = { root, "audio"_p / "music"_p };
+	static const Folder sound = { root, "audio"_p / "sound"_p };
 }
 
 

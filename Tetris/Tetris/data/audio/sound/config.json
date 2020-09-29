@@ -1,0 +1,19 @@
+{
+    "single_line": "clear_single.wav",
+    "double_line": "clear_double.wav",
+    "triple_line": "clear_triple.wav",
+    "tetris_line": "clear_tetris.wav",
+    "all_clear": "clear_triple.wav",
+    "special_clear": "clear_triple.wav",
+
+    "drop_after_clear": "bfall.wav",
+
+    "tetrimino_move": "move.wav",
+    "tetrimino_rotate": "rotate.wav",
+    "tetrimino_hold": "hold.wav",
+    "tetrimino_hit": "landing.wav",
+    "tetrimino_softdrop": "softdrop.wav",
+    "tetrimino_harddrop": "harddrop.wav",
+
+    "number_count": "count.wav"
+}

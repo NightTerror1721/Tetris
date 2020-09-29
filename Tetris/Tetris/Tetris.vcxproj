@@ -19,6 +19,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="src\audio.cpp" />
     <ClCompile Include="src\common.cpp" />
     <ClCompile Include="src\fonts.cpp" />
     <ClCompile Include="src\game_basics.cpp" />
@@ -29,6 +30,7 @@
     <ClCompile Include="src\theme.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\audio.h" />
     <ClInclude Include="src\common.h" />
     <ClInclude Include="src\fonts.h" />
     <ClInclude Include="src\game_basics.h" />
@@ -144,7 +146,7 @@
       <LanguageStandard>stdcpplatest</LanguageStandard>
     </ClCompile>
     <Link>
-      <SubSystem>Console</SubSystem>
+      <SubSystem>Windows</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>

@@ -3,6 +3,7 @@
 #include "theme.h"
 #include "scenario.h"
 #include "fonts.h"
+#include "audio.h"
 
 
 struct Tester : public GameObject
@@ -30,6 +31,8 @@ int main(int argc, char** argv)
 {
 	global::theme.load("default");
 	global::fonts.loadAll();
+	global::sounds.loadAll();
+	global::musics::prepareCache();
 
 	Tester& tester = global::game.objects().emplace<Tester>();
 
